@@ -70,13 +70,16 @@ function buildDashboard() {
     const pai = actifs.filter(e => e.pai || e.ppre || e.ee).length;
     totalEleves += actifs.length; totalF += f; totalG += g;
     totalBep += bep; totalPai += pai;
-    return `<div style="display:grid;grid-template-columns:55px 65px 35px 35px 45px 45px;align-items:center;gap:3px;padding:5px 8px;border-radius:8px;background:#F8FAFF;margin-bottom:4px;font-size:11px">
-      <span style="font-weight:900;color:#1E3A5F">${nom}</span>
-      <span style="color:#64748B">${actifs.length} élèves</span>
-      <span style="color:#EC4899;text-align:center">👧${f}</span>
-      <span style="color:#3B82F6;text-align:center">👦${g}</span>
-      ${bep ? `<span style="font-size:10px;background:#FEF9C3;color:#92400E;padding:1px 4px;border-radius:6px;text-align:center;white-space:nowrap">BEP ${bep}</span>` : '<span></span>'}
-      ${pai ? `<span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 4px;border-radius:6px;text-align:center;white-space:nowrap">PAI ${pai}</span>` : '<span></span>'}
+    const badges = [
+      bep ? `<span style="font-size:10px;background:#FEF9C3;color:#92400E;padding:1px 5px;border-radius:6px">BEP ${bep}</span>` : '',
+      pai ? `<span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 5px;border-radius:6px">PAI ${pai}</span>` : ''
+    ].filter(Boolean).join(' ');
+    return `<div style="display:flex;align-items:center;padding:5px 8px;border-radius:8px;background:#F8FAFF;margin-bottom:4px;font-size:11px;gap:0">
+      <span style="font-weight:900;color:#1E3A5F;width:52px;flex-shrink:0">${nom}</span>
+      <span style="color:#64748B;width:58px;flex-shrink:0">${actifs.length} élèves</span>
+      <span style="color:#EC4899;width:28px;flex-shrink:0;text-align:center">👧${f}</span>
+      <span style="color:#3B82F6;width:28px;flex-shrink:0;text-align:center">👦${g}</span>
+      <span style="flex:1;display:flex;gap:4px;justify-content:flex-end">${badges}</span>
     </div>`;
   }).join('');
 
