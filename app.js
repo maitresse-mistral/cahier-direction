@@ -2432,19 +2432,19 @@ async function tryAutoReconnect() {
   const perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm === 'granted') {
     updateOneDriveStatus(true, handle.name);
-    // Si fichier plus récent que localStorage → proposer rechargement
+    // Charger silencieusement si le fichier OneDrive est plus récent
     try {
       const file = await handle.getFile();
       const localTs = parseInt(localStorage.getItem('cahier_last_save') || '0');
       if (file.lastModified > localTs) {
-        if (confirm('☁️ Des données plus récentes ont été trouvées dans votre OneDrive.\nVoulez-vous les charger ?')) {
-          applyImportedData(JSON.parse(await file.text()));
-          showToast('☁️ Données rechargées depuis OneDrive !');
-        }
+        applyImportedData(JSON.parse(await file.text()));
+        showToast('☁️ Données synchronisées depuis OneDrive');
       } else {
-        showToast('☁️ OneDrive reconnecté automatiquement');
+        showToast('☁️ OneDrive reconnecté — données à jour');
       }
-    } catch {}
+    } catch {
+      showToast('☁️ OneDrive reconnecté automatiquement');
+    }
   } else {
     updateOneDriveStatus('pending', handle.name);
     showToast('☁️ OneDrive : cliquez 💾 pour resynchroniser');
