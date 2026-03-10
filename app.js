@@ -2692,7 +2692,7 @@ function startOAuth() {
   gcalConfig.clientId = clientId;
   localStorage.setItem('cahier_gcal', JSON.stringify(gcalConfig));
 
-  const redirectUri = window.location.origin + window.location.pathname;
+  const redirectUri = (window.location.origin + window.location.pathname).replace(/\/$/, '');
   const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
 
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth`
