@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4f86c6">
+<link rel="manifest" href="manifest.json">
+<title>Cahier de Direction</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="splash" class="splash">
+  <div class="splash-card">
+    <div class="splash-icon">📚</div>
+    <h1>Cahier de Direction</h1>
+    <p>École Élémentaire</p>
+    <div class="setup-fields">
+      <label>Votre nom</label><input type="text" id="setup-name" placeholder="Ex: Mme Dupont">
+      <label>Nom de l'école</label><input type="text" id="setup-school" placeholder="Ex: École Jules Ferry">
+      <label>Année scolaire</label>
+      <select id="setup-year">
+        <option value="2025-2026">2025–2026</option>
+        <option value="2026-2027">2026–2027</option>
+        <option value="2027-2028">2027–2028</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="startApp()">Commencer ✨</button>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <span class="app-title">📚 Cahier de Direction</span>
+    </div>
+    <div class="topbar-center"><span id="topbar-info" class="topbar-info"></span></div>
+    <div class="topbar-right">
+      <span id="onedrive-dot" class="onedrive-dot" title="OneDrive non lié"></span>
+      <button class="icon-btn" id="onedrive-btn" onclick="openOdSetup()" title="Synchronisation OneDrive">☁️</button>
+      <button class="icon-btn" onclick="importFromFile()" title="Charger fichier">📂</button>
+      <button class="icon-btn" onclick="saveAll()" title="Sauvegarder">💾</button>
+      <button class="icon-btn" onclick="toggleNotes()" id="notes-btn" title="Notes & Rappels">🗒️</button>
+      <button class="icon-btn" onclick="openGCalConfig()" id="gcal-btn" title="Google Agenda">📅</button>
+      <button class="icon-btn" onclick="openSettings()" title="Paramètres — modifier nom/école">⚙️</button>
+      <button class="icon-btn" onclick="printSection()" title="Imprimer">🖨️</button>
+      <button class="icon-btn" onclick="toggleStylus()" id="stylus-btn" title="Mode stylet">✏️</button>
+    </div>
+    <input type="file" id="file-import-input" accept=".json" style="display:none" onchange="handleFileInputChange(this)">
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-school" id="sidebar-school"></div>
+      <div class="sidebar-year" id="sidebar-year"></div>
+      <hr class="sidebar-divider">
+      <ul class="nav-sections">
+        <li class="nav-item" data-section="gen"      onclick="gotoSection('gen')">      <span class="nav-dot" style="background:#F9A8D4"></span>Généralités</li>
+        <li class="nav-item" data-section="admin"    onclick="gotoSection('admin')">    <span class="nav-dot" style="background:#93C5FD"></span>Administration</li>
+        <li class="nav-item" data-section="ebp"      onclick="gotoSection('ebp')">      <span class="nav-dot" style="background:#FDA4AF"></span>EBP</li>
+        <li class="nav-item" data-section="calend"   onclick="gotoSection('calend')">   <span class="nav-dot" style="background:#FCD34D"></span>Calendriers</li>
+        <li class="nav-item" data-section="todo"     onclick="gotoSection('todo')">     <span class="nav-dot" style="background:#FDE68A"></span>To Do mensuelle</li>
+        <li class="nav-item" data-section="reunions" onclick="gotoSection('reunions')"> <span class="nav-dot" style="background:#A7F3D0"></span>Réunions</li>
+        <li class="nav-item" data-section="classe"   onclick="gotoSection('classe')">   <span class="nav-dot" style="background:#FBCFE8"></span>Classe</li>
+      </ul>
+      <hr class="sidebar-divider">
+      <div class="sidebar-tools">
+        <div class="onedrive-panel">
+          <div class="onedrive-panel-title">☁️ OneDrive</div>
+          <button class="tool-btn onedrive-link" onclick="linkOneDriveFile()">🔗 Lier fichier OneDrive</button>
+          <button class="tool-btn" onclick="importFromFile()">📂 Charger depuis OneDrive</button>
+          <div id="onedrive-hint" class="onedrive-hint hidden">💡 Déplacez le fichier dans OneDrive puis utilisez "Charger".</div>
+        </div>
+        <hr class="sidebar-divider">
+        <button class="tool-btn" onclick="changeYear()">🔄 Changer d'année</button>
+        <button class="tool-btn" onclick="exportData()">📤 Exporter données</button>
+        <button class="tool-btn danger" onclick="clearSection()">🗑️ Effacer section</button>
+      </div>
+    </nav>
+
+    <main class="content" id="content">
+
+      <!-- ══ GÉNÉRALITÉS ══ -->
+      <section id="sec-gen" class="section hidden" data-color="#F9A8D4">
+        <div class="section-header" style="--c:#F9A8D4">
+          <h2>01 — Généralités</h2>
+          <div class="subtabs">
+            <button class="subtab active" onclick="showTab('gen','infos')">Infos</button>
+            <button class="subtab" onclick="showTab('gen','identites')">Identités</button>
+            <button class="subtab" onclick="showTab('gen','contacts')">Contacts</button>
+            <button class="subtab" onclick="showTab('gen','intervenants')">Intervenants</button>
+            <button class="subtab" onclick="showTab('gen','sorties')">Sorties</button>
+            <button class="subtab" onclick="showTab('gen','docs')">Docs oblig.</button>
+            <button class="subtab" onclick="showTab('gen','identifiants')">🔑 Identifiants</button>
+          </div>
+        </div>
+        <div class="tab-content active" id="gen-infos">
+          <h3>Informations sur l'école</h3>
+          <div class="form-grid">
+            <div class="field-group"><label>Nom de l'école</label><input type="text" data-key="gen.infos.nom"></div>
+            <div class="field-group"><label>Adresse</label><input type="text" data-key="gen.infos.adresse"></div>
+            <div class="field-group"><label>Code postal / Ville</label><input type="text" data-key="gen.infos.cp"></div>
+            <div class="field-group"><label>Téléphone</label><input type="text" data-key="gen.infos.tel"></div>
+            <div class="field-group"><label>Email</label><input type="email" data-key="gen.infos.email"></div>
+            <div class="field-group"><label>Circonscription</label><input type="text" data-key="gen.infos.circo"></div>
+            <div class="field-group"><label>IEN</label><input type="text" data-key="gen.infos.ien"></div>
+            <div class="field-group"><label>Nb de classes</label><input type="number" data-key="gen.infos.nbclasses"></div>
+            <div class="field-group"><label>Nb d'élèves</label><input type="number" data-key="gen.infos.nbeleves"></div>
+          </div>
+          <div class="canvas-zone" data-canvas="gen-infos-notes"><div class="canvas-label">✏️ Notes manuscrites</div><canvas class="drawing-canvas"></canvas></div>
+        </div>
+        <div class="tab-content hidden" id="gen-identites">
+          <h3>Personnel de l'école</h3>
+          <div class="repertoire-banner">
+            <span>📒 Ce tableau sert de répertoire — les noms saisis ici seront disponibles comme liste déroulante dans les autres sections (EBP, AESH…)</span>
+          </div>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="gen.identites"><thead><tr>
+            <th>Nom &amp; Prénom</th><th>Poste</th><th>Téléphone</th><th>Email</th><th>Contrat</th><th>Notes</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="tab-content hidden" id="gen-contacts">
+          <h3>Contacts clés</h3>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="gen.contacts"><thead><tr>
+            <th>Organisme</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Notes</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="tab-content hidden" id="gen-intervenants">
+          <h3>Intervenants extérieurs</h3>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="gen.intervenants"><thead><tr>
+            <th>Nom / Organisme</th><th>Domaine</th><th>Classe(s)</th><th>Périodicité</th><th>Contact</th><th>Agrément</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="tab-content hidden" id="gen-sorties">
+          <h3>Sorties scolaires</h3>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="gen.sorties"><thead><tr>
+            <th>Date</th><th>Destination</th><th>Classe(s)</th><th>Encadrants</th><th>Transport</th><th>Statut</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="tab-content hidden" id="gen-docs">
+          <h3>Documents obligatoires</h3>
+          <div class="checklist-grid">
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.ri"> Règlement intérieur</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.ppms"> PPMS</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.evacu"> Plan d'évacuation</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.secu"> Registre de sécurité</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.projet"> Projet d'école</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.lsu"> LSU</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.cr"> CR Conseil d'école</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.rapport"> Rapport directeur</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.duer"> DUER</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.accidents"> Registre accidents</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.contrats"> Contrats intervenants</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.assur"> Assurances</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.charte"> Charte informatique</label>
+            <label class="check-item"><input type="checkbox" data-key="gen.docs.apc"> APC planning</label>
+          </div>
+          <div class="canvas-zone" data-canvas="gen-docs-notes"><div class="canvas-label">✏️ Notes manuscrites</div><canvas class="drawing-canvas"></canvas></div>
+        </div>
+
+        <!-- IDENTIFIANTS & MOTS DE PASSE -->
+        <div class="tab-content hidden" id="gen-identifiants">
+          <h3>🔑 Sites, identifiants &amp; mots de passe</h3>
+          <div class="identifiants-warning">⚠️ Ces données sont stockées localement sur votre appareil uniquement.</div>
+          <div class="table-wrap">
+            <table class="data-table" id="identifiants-table">
+              <thead><tr>
+                <th style="min-width:160px">Site / Service</th>
+                <th style="min-width:200px">URL</th>
+                <th style="min-width:160px">Identifiant</th>
+                <th style="min-width:160px">Mot de passe</th>
+                <th style="min-width:120px">Notes</th>
+                <th class="no-print"><button class="add-row-btn" onclick="addIdentifiantRow()">+</button></th>
+              </tr></thead>
+              <tbody id="identifiants-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ ADMINISTRATION ══ -->
+      <section id="sec-admin" class="section hidden" data-color="#93C5FD">
+        <div class="section-header" style="--c:#93C5FD">
+          <h2>02 — Administration</h2>
+          <div class="subtabs">
+            <button class="subtab active" onclick="showTab('admin','commandes')">Commandes</button>
+            <button class="subtab" onclick="showTab('admin','effectifs')">Effectifs</button>
+            <button class="subtab" onclick="showTab('admin','docs')">Docs</button>
+            <button class="subtab" onclick="showTab('admin','indicateurs')">📊 Indicateurs</button>
+          </div>
+        </div>
+
+        <!-- COMMANDES par classe avec budget -->
+        <div class="tab-content active" id="admin-commandes">
+          <div class="section-toolbar">
+            <h3>Commandes par classe</h3>
+            <div class="fournisseurs-bar">
+              <span class="label-sm">📦 Fournisseurs :</span>
+              <div id="fournisseurs-tags" class="tags-row"></div>
+              <input type="text" id="new-fournisseur-input" placeholder="Nouveau…" class="input-sm">
+              <button class="btn-xs" onclick="addFournisseur()">+ Ajouter</button>
+            </div>
+          </div>
+          <!-- Sélecteur d'années -->
+          <div class="year-selector-bar" id="commandes-year-bar">
+            <span class="label-sm">📅 Année scolaire :</span>
+            <div id="commandes-year-tabs" class="year-tabs"></div>
+            <button class="btn-xs" onclick="addCommandesYear()">+ Nouvelle année</button>
+          </div>
+          <div class="class-tabs" id="commandes-class-tabs"></div>
+          <div id="commandes-class-content"></div>
+        </div>
+
+        <!-- EFFECTIFS : 5 classes avec noms modifiables + import Excel -->
+        <div class="tab-content hidden" id="admin-effectifs">
+          <h3>Classes et effectifs</h3>
+          <div class="class-tabs" id="effectifs-class-tabs"></div>
+          <div id="effectifs-class-content"></div>
+        </div>
+
+        <!-- DOCS admin : cases à cocher dynamiques -->
+        <div class="tab-content hidden" id="admin-docs">
+          <h3>Suivi des documents — Enseignants</h3>
+          <div class="import-bar">
+            <button class="btn-xs" onclick="addAdminDocsRow()">+ Ajouter enseignant</button>
+            <button class="btn-xs" onclick="addAdminDocsCol()" style="background:#EFF6FF;color:#3B82F6;border-color:#BFDBFE">+ Ajouter colonne</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="admin-docs-table">
+              <thead><tr id="admin-docs-head">
+                <th style="min-width:140px">Enseignant</th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Fiche renseign.</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Sorties t.scol.</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">PAI</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Fiches urgence</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Droit image</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Charte internet</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">APC</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Assurance</span></th>
+                <th class="th-rot"><span contenteditable="true" onblur="saveAdminDocsCols()">Règlement int.</span></th>
+                <th class="no-print"></th>
+              </tr></thead>
+              <tbody id="admin-docs-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- INDICATEURS par période -->
+        <div class="tab-content hidden" id="admin-indicateurs">
+          <h3>📊 Tableau de bord — Indicateurs par période</h3>
+          <div id="indicateurs-container"></div>
+        </div>
+      </section>
+      <section id="sec-ebp" class="section hidden" data-color="#FDA4AF">
+        <div class="section-header" style="--c:#FDA4AF">
+          <h2>03 — Élèves à Besoins Particuliers</h2>
+          <div class="subtabs">
+            <button class="subtab active" onclick="showTab('ebp','registre')">PAI/ESS/PPRE</button>
+            <button class="subtab" onclick="showTab('ebp','soins')">Sorties/Soins</button>
+            <button class="subtab" onclick="showTab('ebp','aesh')">AESH</button>
+            <button class="subtab" onclick="showTab('ebp','rdv')">RDV parents</button>
+          </div>
+        </div>
+
+        <!-- PAI : dispositifs cochables -->
+        <div class="tab-content active" id="ebp-registre">
+          <h3>Registre PAI – ESS – EE – PPRE</h3>
+          <div class="import-bar">
+            <button class="btn-xs" onclick="addEbpRow()">+ Ajouter élève</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th style="min-width:150px">Nom &amp; Prénom</th>
+                <th>Classe</th>
+                <th class="th-rot"><span>PAI</span></th>
+                <th class="th-rot"><span>ESS</span></th>
+                <th class="th-rot"><span>EE</span></th>
+                <th class="th-rot"><span>PPRE</span></th>
+                <th class="th-rot"><span>PPS</span></th>
+                <th class="th-rot"><span>AESH</span></th>
+                <th>Rév. 1</th><th>Rév. 2</th><th>Rév. 3</th>
+                <th>Observations</th>
+                <th class="no-print"></th>
+              </tr></thead>
+              <tbody id="ebp-registre-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SOINS : sorties régulières avec jours de semaine -->
+        <div class="tab-content hidden" id="ebp-soins">
+          <h3>Sorties et soins réguliers</h3>
+          <div class="import-bar">
+            <button class="btn-xs" onclick="addEbpSoinsRow()">+ Ajouter ligne</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th>Nom &amp; Prénom</th><th>Classe</th>
+                <th>Jours (Lun / Mar / Jeu / Ven)</th>
+                <th>H. sortie</th><th>H. retour</th>
+                <th>Motif / Soin</th><th>Responsable</th><th>Observations</th>
+                <th class="no-print"></th>
+              </tr></thead>
+              <tbody id="ebp-soins-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AESH : emplois du temps 6 AESH -->
+        <div class="tab-content hidden" id="ebp-aesh">
+          <h3>Emplois du temps AESH</h3>
+          <div class="subtabs-inner" id="aesh-subtabs"></div>
+          <div id="aesh-content"></div>
+        </div>
+
+        <div class="tab-content hidden" id="ebp-rdv">
+          <h3>RDV Parents</h3>
+          <div class="rdv-grid" id="rdv-grid"></div>
+          <button class="btn-secondary" onclick="addRdvFiche()">+ Ajouter un RDV</button>
+        </div>
+      </section>
+
+      <!-- ══ CALENDRIERS ══ -->
+      <section id="sec-calend" class="section hidden" data-color="#FCD34D">
+        <div class="section-header" style="--c:#FCD34D">
+          <h2>04 — Calendriers</h2>
+          <div class="subtabs" id="subtabs-calend"></div>
+        </div>
+        <div id="calend-content"></div>
+      </section>
+
+      <!-- ══ TO DO ══ -->
+      <section id="sec-todo" class="section hidden" data-color="#FDE68A">
+        <div class="section-header" style="--c:#FDE68A">
+          <h2>05 — To Do Listes Mensuelles</h2>
+          <div class="subtabs" id="subtabs-todo"></div>
+        </div>
+        <div id="todo-content"></div>
+      </section>
+
+      <!-- ══ RÉUNIONS ══ -->
+      <section id="sec-reunions" class="section hidden" data-color="#A7F3D0">
+        <div class="section-header" style="--c:#A7F3D0">
+          <h2>06 — Réunions</h2>
+          <div class="subtabs" id="subtabs-reunions"></div>
+        </div>
+        <div id="reunions-content"></div>
+      </section>
+
+      <!-- ══ CLASSE ══ -->
+      <section id="sec-classe" class="section hidden" data-color="#FBCFE8">
+        <div class="section-header" style="--c:#FBCFE8">
+          <h2>07 — Enseignant / Classe</h2>
+          <div class="subtabs">
+            <button class="subtab active" onclick="showTab('classe','docsadm')">DOCS ADM</button>
+            <button class="subtab" onclick="showTab('classe','anniv')">ANNIV</button>
+            <button class="subtab" onclick="showTab('classe','sorties')">SORTIES</button>
+            <button class="subtab" onclick="showTab('classe','autosorties')">AUTO SORTIES</button>
+            <button class="subtab" onclick="showTab('classe','coop')">COOP</button>
+            <button class="subtab" onclick="showTab('classe','projets')">PROJETS</button>
+            <button class="subtab" onclick="showTab('classe','releves')">RELEVÉS</button>
+          </div>
+        </div>
+
+        <!-- DOCS ADM : par élève, cases à cocher + import Excel + colonnes dynamiques -->
+        <div class="tab-content active" id="classe-docsadm">
+          <h3>Documents administratifs — par élève</h3>
+          <div class="import-bar">
+            <span class="label-sm">📥 Importer liste élèves :</span>
+            <input type="file" id="docsadm-excel" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelToDocsAdm(this)">
+            <button class="btn-xs" onclick="document.getElementById('docsadm-excel').click()">📂 Fichier Excel</button>
+            <button class="btn-xs" onclick="addDocsAdmRow()">+ Ajouter élève</button>
+            <button class="btn-xs" onclick="addDocsAdmCol()" style="margin-left:auto">＋ Colonne</button>
+          </div>
+          <div class="table-wrap" id="docsadm-table-wrap">
+            <!-- Généré dynamiquement par buildDocsAdmTable() -->
+          </div>
+        </div>
+
+        <!-- ANNIVERSAIRES : calendrier sep→jul -->
+        <div class="tab-content hidden" id="classe-anniv">
+          <h3>Anniversaires — Calendrier de l'année scolaire</h3>
+          <div class="import-bar" style="flex-wrap:wrap;gap:8px">
+            <span class="label-sm">🎂 Synchroniser depuis :</span>
+            <div id="anniv-sync-classes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            <button class="btn-xs" onclick="syncAnnivFromEffectifs()" style="background:#FDF2F8;color:#DB2777;border-color:#FBCFE8">✅ Synchroniser</button>
+          </div>
+          <div id="anniv-calendar"></div>
+        </div>
+
+        <div class="tab-content hidden" id="classe-sorties">
+          <h3>Sorties scolaires</h3>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="classe.sorties"><thead><tr>
+            <th>Date</th><th>Destination</th><th>Encadrants</th><th>Transport</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <!-- AUTO SORTIES : import Excel + cases à cocher -->
+        <div class="tab-content hidden" id="classe-autosorties">
+          <h3>Autorisations de sorties</h3>
+          <div class="import-bar">
+            <button class="btn-xs" onclick="addAutosortieNom()">+ Ajouter une sortie</button>
+            <button class="btn-xs" onclick="openImportEffectifsModal()" style="background:#EFF6FF;color:#3B82F6;border-color:#BFDBFE">📋 Importer depuis Effectifs</button>
+          </div>
+          <div id="autosorties-sorties-container"></div>
+        </div>
+
+        <!-- COOP : budget alloué + solde -->
+        <div class="tab-content hidden" id="classe-coop">
+          <h3>Coopérative scolaire</h3>
+          <div class="budget-bar">
+            <label class="label-sm">💰 Budget alloué :</label>
+            <input type="number" id="coop-budget" placeholder="0.00" step="0.01" min="0" class="budget-input" oninput="calcCoop()">
+            <span class="label-sm">€</span>
+            <div class="budget-badge" id="coop-remaining">Solde : — €</div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th>Date</th><th>Libellé</th><th>Recette (€)</th><th>Dépense (€)</th><th>Solde cumulé (€)</th><th>Visa</th>
+                <th class="no-print"><button class="add-row-btn" onclick="addCoopRow()">+</button></th>
+              </tr></thead>
+              <tbody id="coop-body"></tbody>
+              <tfoot><tr class="total-row">
+                <td colspan="2">TOTAL :</td>
+                <td id="coop-recettes" class="total-cell">0.00 €</td>
+                <td id="coop-depenses" class="total-cell">0.00 €</td>
+                <td id="coop-solde" class="total-cell">0.00 €</td>
+                <td colspan="2"></td>
+              </tr></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-content hidden" id="classe-projets">
+          <h3>Projets de classe</h3>
+          <div class="table-wrap"><table class="data-table editable-table" data-key="classe.projets"><thead><tr>
+            <th>Projet</th><th>Classe(s)</th><th>Enseignant</th><th>Période</th><th>Partenaires</th><th>Statut</th>
+            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <!-- RELEVÉS : import Excel + en-têtes penchés éditables -->
+        <div class="tab-content hidden" id="classe-releves">
+          <h3>Relevés de notes</h3>
+          <div class="subtabs-inner">
+            <button class="subtab-inner active" onclick="showReleve(1)">Relevé 1</button>
+            <button class="subtab-inner" onclick="showReleve(2)">Relevé 2</button>
+            <button class="subtab-inner" onclick="showReleve(3)">Relevé 3</button>
+            <button class="subtab-inner" onclick="showReleve(4)">Relevé 4</button>
+            <button class="subtab-inner" onclick="showReleve(5)">Relevé 5</button>
+          </div>
+          <div id="releves-container"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- GOOGLE CALENDAR CONFIG MODAL — OAuth2 -->
+<div id="gcal-modal" class="gcal-modal hidden">
+  <div class="gcal-modal-card">
+    <div class="gcal-modal-header">
+      <span>📅 Connexion Google Agenda</span>
+      <button class="notes-close-btn" onclick="closeGCalConfig()">×</button>
+    </div>
+    <div class="gcal-modal-body">
+
+      <div class="gcal-status" id="gcal-status"></div>
+
+      <!-- État connecté -->
+      <div id="gcal-connected-panel" style="display:none">
+        <div class="gcal-user-badge" id="gcal-user-badge"></div>
+        <div class="gcal-options">
+          <label class="gcal-option-label">Afficher dans :</label>
+          <div class="gcal-checkboxes">
+            <label class="check-item"><input type="checkbox" id="gcal-opt-calend" checked onchange="saveGCalConfig()"> Calendriers P1→P5</label>
+            <label class="check-item"><input type="checkbox" id="gcal-opt-todo" checked onchange="saveGCalConfig()"> To Do mensuelles</label>
+          </div>
+          <label class="gcal-option-label" style="margin-top:10px">Couleur par défaut :</label>
+          <input type="color" id="gcal-color" value="#4285F4" onchange="saveGCalConfig()"
+            style="width:40px;height:32px;border:2px solid #E2E8F0;border-radius:8px;cursor:pointer;padding:2px">
+        </div>
+        <div class="gcal-actions">
+          <button class="btn-primary" onclick="syncGCal()" style="width:100%;margin-top:0;background:linear-gradient(135deg,#34A853,#4285F4)">
+            🔄 Synchroniser maintenant
+          </button>
+          <button class="btn-xs danger" onclick="disconnectGCal()" style="margin-top:8px;color:#EF4444">
+            ✕ Déconnecter Google Agenda
+          </button>
+        </div>
+      </div>
+
+      <!-- État non connecté -->
+      <div id="gcal-login-panel">
+        <div class="gcal-step">
+          <div class="gcal-step-num">1</div>
+          <div class="gcal-step-content">
+            <label>Client ID OAuth2</label>
+            <input type="text" id="gcal-clientid"
+              placeholder="123456789-xxxx.apps.googleusercontent.com"
+              class="gcal-input" oninput="saveGCalConfig()">
+            <p class="gcal-hint">Depuis Google Cloud Console → API et services → Identifiants → votre Client OAuth</p>
+          </div>
+        </div>
+        <div class="gcal-actions" style="margin-top:16px">
+          <button class="btn-primary" onclick="startOAuth()" style="width:100%;margin-top:0;background:linear-gradient(135deg,#4285F4,#34A853)">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              style="width:18px;height:18px;vertical-align:middle;margin-right:8px;border-radius:2px">
+            Se connecter avec Google
+          </button>
+          <p class="gcal-hint" style="margin-top:8px;text-align:center">
+            Vos événements privés seront visibles ✅<br>
+            Lecture seule — aucune modification possible
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div id="gcal-overlay" class="notes-overlay hidden" onclick="closeGCalConfig()"></div>
+
+<!-- GOOGLE CALENDAR SYNC STATUS BAR -->
+<div id="gcal-syncbar" class="gcal-syncbar hidden">
+  <span id="gcal-syncbar-text">📅 Google Agenda connecté</span>
+  <button class="btn-xs" onclick="syncGCal()">🔄 Sync</button>
+</div>
+
+<!-- NOTES & RAPPELS PANEL -->
+<div id="notes-panel" class="notes-panel hidden">
+  <div class="notes-panel-header">
+    <span>🗒️ Notes &amp; Rappels</span>
+    <div class="notes-header-actions">
+      <button class="btn-xs" onclick="addNote()">+ Nouveau</button>
+      <button class="notes-close-btn" onclick="toggleNotes()">×</button>
+    </div>
+  </div>
+  <div class="notes-filters">
+    <button class="note-filter active" onclick="filterNotes('all')">Tous</button>
+    <button class="note-filter" onclick="filterNotes('urgent')">🔴 Urgent</button>
+    <button class="note-filter" onclick="filterNotes('todo')">🟡 À faire</button>
+    <button class="note-filter" onclick="filterNotes('info')">🔵 Info</button>
+    <button class="note-filter" onclick="filterNotes('done')">✅ Fait</button>
+  </div>
+  <div id="notes-list" class="notes-list"></div>
+</div>
+<div id="notes-overlay" class="notes-overlay hidden" onclick="toggleNotes()"></div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="stylus-toolbar" class="stylus-toolbar hidden">
+  <button onclick="setTool('pen')" class="tool-active">🖊️</button>
+  <button onclick="setTool('marker')">🖍️</button>
+  <button onclick="setTool('eraser')">🧹</button>
+  <input type="color" id="pen-color" value="#1E3A5F">
+  <input type="range" id="pen-size" min="1" max="20" value="2">
+  <button onclick="clearCanvas()">🗑️</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+<!-- MODALE ONEDRIVE -->
+<div id="od-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:20px;padding:28px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:'Nunito',sans-serif">
+    <h3 style="margin:0 0 16px;font-size:18px;font-weight:900;color:#1E3A5F">☁️ Synchronisation OneDrive</h3>
+
+    <!-- Panel : fichier lié -->
+    <div id="od-linked-panel" style="display:none">
+      <div style="background:#F0FFF4;border:2px solid #BBF7D0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">✅</span>
+        <div>
+          <div style="font-weight:800;color:#166534">Fichier lié</div>
+          <div id="od-filename" style="color:#15803D;font-size:13px;word-break:break-all"></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#64748B;margin:0 0 16px">
+        Chaque sauvegarde (💾) met à jour ce fichier automatiquement.<br>
+        Pour synchroniser sur un autre appareil : ouvrez le cahier, cliquez ☁️ → <strong>Charger depuis OneDrive</strong>.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="loadFromLinkedFile()" style="flex:1;min-width:140px;padding:11px;background:#0EA5E9;color:white;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer">🔄 Charger depuis OneDrive</button>
+        <button onclick="saveAll();closeOdSetup()" style="flex:1;min-width:120px;padding:11px;background:#22C55E;color:white;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer">💾 Sauvegarder</button>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px">
+        <button onclick="unlinkOneDrive()" style="flex:1;padding:9px;background:#FEF2F2;color:#EF4444;border:1.5px solid #FECACA;border-radius:12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer">🔓 Délier ce fichier</button>
+        <button onclick="closeOdSetup()" style="flex:1;padding:9px;background:#F1F5F9;color:#64748B;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Fermer</button>
+      </div>
+    </div>
+
+    <!-- Panel : non lié -->
+    <div id="od-unlinked-panel">
+      <p style="font-size:13px;color:#475569;margin:0 0 18px;line-height:1.6">
+        Liez un fichier dans votre <strong>dossier OneDrive</strong> pour synchroniser vos données sur tous vos appareils Windows.
+      </p>
+      <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#92400E;line-height:1.7">
+        <strong>🚀 Comment ça marche :</strong><br>
+        1. Cliquez <em>"Lier un fichier OneDrive"</em> ci-dessous<br>
+        2. Naviguez vers votre dossier <strong>OneDrive</strong> et nommez le fichier<br>
+        3. Sur vos autres appareils : cliquez ☁️ → <em>"Charger depuis OneDrive"</em>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="linkOneDriveFile()" style="flex:1;padding:12px;background:#0EA5E9;color:white;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer">🔗 Lier un fichier OneDrive</button>
+        <button onclick="importFromFile()" style="flex:1;padding:12px;background:#F0FFF4;color:#166534;border:1.5px solid #BBF7D0;border-radius:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer">📂 Charger un fichier</button>
+      </div>
+      <button onclick="closeOdSetup()" style="width:100%;margin-top:10px;padding:10px;background:#F1F5F9;color:#64748B;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE IMPORT EFFECTIFS → AUTORISATIONS -->
+<div id="import-effectifs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:20px;padding:28px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:'Nunito',sans-serif">
+    <h3 style="margin:0 0 6px;font-size:18px;font-weight:900;color:#1E3A5F">📋 Importer depuis les Effectifs</h3>
+    <p style="margin:0 0 18px;font-size:13px;color:#64748B">Choisissez une sortie existante et les classes à importer.</p>
+    <label style="font-size:12px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Ajouter dans la sortie</label>
+    <select id="import-eff-sortie-sel" style="width:100%;margin:6px 0 16px;padding:10px 14px;border:2px solid #E2E8F0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;box-sizing:border-box"></select>
+    <label style="font-size:12px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Classes à importer</label>
+    <div id="import-eff-classes" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 20px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="doImportEffectifs()" style="flex:1;padding:12px;background:#1E3A5F;color:white;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer">✅ Importer</button>
+      <button onclick="document.getElementById('import-effectifs-modal').style.display='none'" style="padding:12px 18px;background:#F1F5F9;color:#64748B;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE PARAMÈTRES -->
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:20px;padding:32px;width:360px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:'Nunito',sans-serif">
+    <h3 style="margin:0 0 20px;font-size:20px;font-weight:900;color:#1E3A5F">⚙️ Paramètres</h3>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Votre nom</label>
+        <input id="settings-name" type="text" style="width:100%;margin-top:6px;padding:10px 14px;border:2px solid #E2E8F0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Nom de l'école</label>
+        <input id="settings-school" type="text" style="width:100%;margin-top:6px;padding:10px 14px;border:2px solid #E2E8F0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Année scolaire</label>
+        <select id="settings-year" style="width:100%;margin-top:6px;padding:10px 14px;border:2px solid #E2E8F0;border-radius:10px;font-family:'Nunito',sans-serif;font-size:15px;box-sizing:border-box">
+          <option value="2025-2026">2025–2026</option>
+          <option value="2026-2027">2026–2027</option>
+          <option value="2027-2028">2027–2028</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="saveSettings()" style="flex:1;padding:12px;background:#1E3A5F;color:white;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer">✅ Enregistrer</button>
+      <button onclick="closeSettings()" style="padding:12px 18px;background:#F1F5F9;color:#64748B;border:none;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Annuler</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
