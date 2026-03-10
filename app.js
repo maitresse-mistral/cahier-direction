@@ -2641,7 +2641,72 @@ function setupCanvas(canvas){
 function toggleStylus(){state.stylusMode=!state.stylusMode;document.body.classList.toggle('stylus-mode',state.stylusMode);document.getElementById('stylus-btn').classList.toggle('active',state.stylusMode);document.getElementById('stylus-toolbar').classList.toggle('hidden',!state.stylusMode);showToast(state.stylusMode?'✏️ Mode stylet activé':'⌨️ Mode clavier');}
 function setTool(t){state.currentTool=t;document.querySelectorAll('.stylus-toolbar button').forEach(b=>b.classList.remove('tool-active'));event.target.classList.add('tool-active');}
 function clearCanvas(){const c=document.querySelector('.section:not(.hidden) .drawing-canvas');if(!c) return;if(confirm('Effacer ?')){const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);const z=c.closest('.canvas-zone');if(z) delete state.canvas[z.dataset.canvas];debounceSave();}}
-function printSection(){window.print();}
+function printSection() {
+  // Trouver l'onglet actif
+  const activeSection = document.querySelector('.section:not(.hidden)');
+  if (!activeSection) { window.print(); return; }
+
+  const activeTab = activeSection.querySelector('.tab-content.active') || activeSection;
+  const sectionTitle = activeSection.querySelector('h2')?.textContent || 'Cahier de Direction';
+  const tabTitle = activeTab.querySelector('h3')?.textContent || '';
+  const fullTitle = `${state.meta.school} — ${sectionTitle}${tabTitle ? ' — ' + tabTitle : ''} — ${state.meta.year}`;
+
+  // Cloner le contenu à imprimer
+  const clone = activeTab.cloneNode(true);
+
+  // Supprimer les boutons et éléments no-print
+  clone.querySelectorAll('.no-print, button, .add-row-btn, .delete-row-btn, .import-bar, .subtabs').forEach(el => el.remove());
+
+  // Créer une fenêtre d'impression
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>${fullTitle}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito', sans-serif; font-size: 12px; color: #1E3A5F; padding: 20px; }
+    h1 { font-size: 14px; font-weight: 900; color: #1E3A5F; margin-bottom: 4px; }
+    .print-header { border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .print-date { font-size: 11px; color: #94A3B8; }
+    h3 { font-size: 13px; font-weight: 800; margin: 12px 0 8px; color: #1E3A5F; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; }
+    th { background: #F1F5F9; font-weight: 800; padding: 6px 8px; border: 1px solid #E2E8F0; text-align: left; }
+    td { padding: 5px 8px; border: 1px solid #E2E8F0; vertical-align: top; }
+    tr:nth-child(even) td { background: #FAFAFA; }
+    input[type=text], input[type=date], input[type=number], textarea, select { border: none; background: transparent; font-family: 'Nunito', sans-serif; font-size: 11px; width: 100%; }
+    input[type=checkbox] { width: 14px; height: 14px; }
+    .anniv-months { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .anniv-month-card { border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; }
+    .anniv-month-header { background: #FBCFE8; padding: 6px 10px; font-weight: 800; font-size: 12px; }
+    .anniv-row { display: flex; gap: 8px; padding: 4px 8px; border-bottom: 1px solid #F1F5F9; font-size: 11px; }
+    .anniv-day { font-weight: 800; min-width: 24px; }
+    .todo-item { display: flex; gap: 8px; padding: 4px 6px; border-bottom: 1px solid #F1F5F9; }
+    .niveau-btn { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+    .niveau-btn.active { background: #DBEAFE; color: #1D4ED8; }
+    @media print {
+      body { padding: 10px; }
+      @page { margin: 1cm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      <h1>${fullTitle}</h1>
+    </div>
+    <div class="print-date">Imprimé le ${new Date().toLocaleDateString('fr-FR')}</div>
+  </div>
+  ${clone.innerHTML}
+  <script>
+    window.onload = () => { window.print(); window.onafterprint = () => window.close(); };
+  </script>
+</body>
+</html>`);
+  win.document.close();
+}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.add('hidden'),2500);}
 
 // ══════════════════════════════════════
