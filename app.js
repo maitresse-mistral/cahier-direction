@@ -70,13 +70,13 @@ function buildDashboard() {
     const pai = actifs.filter(e => e.pai || e.ppre || e.ee).length;
     totalEleves += actifs.length; totalF += f; totalG += g;
     totalBep += bep; totalPai += pai;
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;background:#F8FAFF;margin-bottom:5px">
-      <span style="font-weight:800;color:#1E3A5F;min-width:45px">${nom}</span>
-      <span style="font-size:13px;color:#64748B">${actifs.length} élèves</span>
-      <span style="font-size:12px;color:#EC4899">👧 ${f}</span>
-      <span style="font-size:12px;color:#3B82F6">👦 ${g}</span>
-      ${bep ? `<span style="font-size:11px;background:#FEF9C3;color:#92400E;padding:2px 6px;border-radius:10px">BEP ${bep}</span>` : ''}
-      ${pai ? `<span style="font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:10px">PAI/EE ${pai}</span>` : ''}
+    return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:#F8FAFF;margin-bottom:4px;font-size:12px">
+      <span style="font-weight:900;color:#1E3A5F;min-width:38px;font-size:12px">${nom}</span>
+      <span style="color:#64748B;flex:1">${actifs.length} élèves</span>
+      <span style="color:#EC4899">👧${f}</span>
+      <span style="color:#3B82F6;margin-left:4px">👦${g}</span>
+      ${bep ? `<span style="font-size:10px;background:#FEF9C3;color:#92400E;padding:1px 5px;border-radius:8px">BEP ${bep}</span>` : ''}
+      ${pai ? `<span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 5px;border-radius:8px">PAI ${pai}</span>` : ''}
     </div>`;
   }).join('');
 
@@ -104,10 +104,12 @@ function buildDashboard() {
   // ── Widget To-Do du mois ──
   const moisIdx = today.getMonth();
   const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const mk = moisIdx === 8 ? 'rentree' : MOIS[moisIdx].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Utiliser le même mapping que l'application
+  const todoMap = {7:'rentree',8:'sep',9:'oct',10:'nov',11:'dec',0:'jan',1:'fev',2:'mar',3:'avr',4:'mai',5:'juin',6:'juil'};
+  const mk = todoMap[moisIdx] || 'sep';
   const todos = getData(`todo.${mk}.items`) || [];
-  const enCours = todos.filter(t => !t.done);
-  const faites  = todos.filter(t => t.done);
+  const enCours = todos.filter(t => !t.checked);
+  const faites  = todos.filter(t => t.checked);
   const pct = todos.length ? Math.round((faites.length / todos.length) * 100) : 0;
 
   const todoRows = enCours.slice(0, 6).map(t => `
@@ -136,20 +138,18 @@ function buildDashboard() {
     </div>`;
 
   // ── Widget Google Agenda ──
+  const todayStr2 = today.toISOString().split('T')[0];
   const upcomingEvents = gcalEvents
-    .filter(ev => {
-      const d = new Date(ev.start || ev.date);
-      return d >= today;
-    })
-    .sort((a, b) => new Date(a.start || a.date) - new Date(b.start || b.date))
+    .filter(ev => ev.start >= todayStr2)
+    .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 5);
 
   const evRows = upcomingEvents.map(ev => {
-    const d = new Date(ev.start || ev.date);
+    const d = new Date(ev.start + 'T12:00:00');
     const dStr = d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;background:#F0FDF4;margin-bottom:4px">
       <div style="background:${ev.color||'#34A853'};color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;min-width:50px;text-align:center">${dStr}</div>
-      <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||ev.summary||''}</span>
+      <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||''}</span>
     </div>`;
   }).join('');
 
