@@ -568,3 +568,69 @@ body.stylus-mode .drawing-canvas { cursor: crosshair; }
 /* ══ INDICATEURS v2 — catégorie en ligne ══ */
 .indic-cat-header { color: #1E3A5F; border-bottom: 2px solid white !important; }
 .indic-cat-row td { padding: 8px 14px !important; }
+
+/* ══ TABLEAU DE BORD ══ */
+.dash-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.08);
+  overflow: hidden;
+  border: 1.5px solid #F1F5F9;
+  transition: transform .2s, box-shadow .2s;
+}
+.dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,.12);
+}
+.dash-card-header {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+}
+.dash-card-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.dash-card-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: white;
+  font-family: 'Nunito', sans-serif;
+}
+.dash-card-sub {
+  font-size: 12px;
+  opacity: .85;
+  color: white;
+  margin-top: 1px;
+}
+.dash-card-body {
+  padding: 14px 16px;
+}
+.dash-goto {
+  margin-left: auto;
+  background: rgba(255,255,255,.25);
+  border: 1.5px solid rgba(255,255,255,.4);
+  color: white;
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.dash-goto:hover { background: rgba(255,255,255,.4); }
+.dash-stat {
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}

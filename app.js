@@ -41,14 +41,204 @@ function startApp(fromStorage = false) {
   const savedF = getData('meta.fournisseurs');
   if (savedF) state.fournisseurs = savedF;
   buildDynamicSections();
-  gotoSection('gen');
+  gotoSection('dashboard');
   startAutoSave();
   setTimeout(tryAutoReconnect, 500); // reconnexion silencieuse OneDrive
   initGCal();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-// ── NAVIGATION ────────────────────────
+// ══════════════════════════════════════
+// TABLEAU DE BORD
+// ══════════════════════════════════════
+function buildDashboard() {
+  const container = document.getElementById('dashboard-content');
+  if (!container) return;
+
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  // ── Widget Effectifs ──
+  let totalEleves = 0, totalF = 0, totalG = 0, totalBep = 0, totalPai = 0;
+  const classeRows = classNames.map((nom, ci) => {
+    const eleves = getData(`admin.effectifs.c${ci}`) || [];
+    const actifs = eleves.filter(e => e.nom?.trim());
+    const f = actifs.filter(e => e.genre === 'f').length;
+    const g = actifs.filter(e => e.genre === 'g').length;
+    const bep = actifs.filter(e => e.bep).length;
+    const pai = actifs.filter(e => e.pai || e.ppre || e.ee).length;
+    totalEleves += actifs.length; totalF += f; totalG += g;
+    totalBep += bep; totalPai += pai;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;background:#F8FAFF;margin-bottom:5px">
+      <span style="font-weight:800;color:#1E3A5F;min-width:45px">${nom}</span>
+      <span style="font-size:13px;color:#64748B">${actifs.length} élèves</span>
+      <span style="font-size:12px;color:#EC4899">👧 ${f}</span>
+      <span style="font-size:12px;color:#3B82F6">👦 ${g}</span>
+      ${bep ? `<span style="font-size:11px;background:#FEF9C3;color:#92400E;padding:2px 6px;border-radius:10px">BEP ${bep}</span>` : ''}
+      ${pai ? `<span style="font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:10px">PAI/EE ${pai}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  const widgetEffectifs = `
+    <div class="dash-card">
+      <div class="dash-card-header" style="background:linear-gradient(135deg,#93C5FD,#60A5FA)">
+        <span class="dash-card-icon">👨‍🏫</span>
+        <div>
+          <div class="dash-card-title">Effectifs</div>
+          <div class="dash-card-sub">${totalEleves} élèves au total</div>
+        </div>
+        <button class="dash-goto" onclick="gotoSection('admin')">→</button>
+      </div>
+      <div class="dash-card-body">
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div class="dash-stat" style="background:#FDF2F8;color:#DB2777">👧 ${totalF} filles</div>
+          <div class="dash-stat" style="background:#EFF6FF;color:#1D4ED8">👦 ${totalG} garçons</div>
+          ${totalBep ? `<div class="dash-stat" style="background:#FEF9C3;color:#92400E">BEP ${totalBep}</div>` : ''}
+          ${totalPai ? `<div class="dash-stat" style="background:#FEE2E2;color:#991B1B">PAI/EE ${totalPai}</div>` : ''}
+        </div>
+        ${classeRows}
+      </div>
+    </div>`;
+
+  // ── Widget To-Do du mois ──
+  const moisIdx = today.getMonth();
+  const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const mk = moisIdx === 8 ? 'rentree' : MOIS[moisIdx].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const todos = getData(`todo.${mk}.items`) || [];
+  const enCours = todos.filter(t => !t.done);
+  const faites  = todos.filter(t => t.done);
+  const pct = todos.length ? Math.round((faites.length / todos.length) * 100) : 0;
+
+  const todoRows = enCours.slice(0, 6).map(t => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:#FFFBEB;margin-bottom:4px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#FCD34D;flex-shrink:0"></span>
+      <span style="font-size:13px;color:#1E3A5F;flex:1">${t.text || t}</span>
+    </div>`).join('');
+
+  const widgetTodo = `
+    <div class="dash-card">
+      <div class="dash-card-header" style="background:linear-gradient(135deg,#FDE68A,#FCD34D)">
+        <span class="dash-card-icon">✅</span>
+        <div>
+          <div class="dash-card-title" style="color:#1E3A5F">To-Do — ${MOIS[moisIdx]}</div>
+          <div class="dash-card-sub" style="color:#78350F">${faites.length}/${todos.length} tâches accomplies</div>
+        </div>
+        <button class="dash-goto" onclick="gotoSection('todo')" style="color:#78350F;border-color:#FCD34D">→</button>
+      </div>
+      <div class="dash-card-body">
+        <div style="background:#F1F5F9;border-radius:20px;height:8px;margin-bottom:12px;overflow:hidden">
+          <div style="background:linear-gradient(90deg,#FCD34D,#F59E0B);height:100%;width:${pct}%;border-radius:20px;transition:width .5s"></div>
+        </div>
+        ${enCours.length === 0 ? '<div style="text-align:center;padding:12px;color:#22C55E;font-weight:800">🎉 Toutes les tâches accomplies !</div>' : todoRows}
+        ${enCours.length > 6 ? `<div style="text-align:center;font-size:12px;color:#94A3B8;margin-top:6px">+ ${enCours.length - 6} autres tâches</div>` : ''}
+      </div>
+    </div>`;
+
+  // ── Widget Google Agenda ──
+  const upcomingEvents = gcalEvents
+    .filter(ev => {
+      const d = new Date(ev.start || ev.date);
+      return d >= today;
+    })
+    .sort((a, b) => new Date(a.start || a.date) - new Date(b.start || b.date))
+    .slice(0, 5);
+
+  const evRows = upcomingEvents.map(ev => {
+    const d = new Date(ev.start || ev.date);
+    const dStr = d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;background:#F0FDF4;margin-bottom:4px">
+      <div style="background:${ev.color||'#34A853'};color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;min-width:50px;text-align:center">${dStr}</div>
+      <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||ev.summary||''}</span>
+    </div>`;
+  }).join('');
+
+  const widgetAgenda = `
+    <div class="dash-card">
+      <div class="dash-card-header" style="background:linear-gradient(135deg,#34A853,#4285F4)">
+        <span class="dash-card-icon">📅</span>
+        <div>
+          <div class="dash-card-title">Google Agenda</div>
+          <div class="dash-card-sub">${upcomingEvents.length} événement(s) à venir</div>
+        </div>
+        <button class="dash-goto" onclick="openGCalConfig()">→</button>
+      </div>
+      <div class="dash-card-body">
+        ${upcomingEvents.length === 0
+          ? `<div style="text-align:center;padding:16px;color:#94A3B8;font-size:13px">
+              ${gcalEvents.length === 0 ? '📅 Synchronisez Google Agenda pour voir vos événements' : '✅ Aucun événement à venir'}
+             </div>`
+          : evRows}
+      </div>
+    </div>`;
+
+  // ── Widget Prochaine réunion ──
+  let nextReunion = null;
+  for (let n = 1; n <= 15; n++) {
+    const label = getData(`reunions.r${n}.label`) || `Réunion ${n}`;
+    const date  = getData(`reunions.r${n}.date`) || '';
+    if (date) {
+      const d = new Date(date);
+      if (d >= today) {
+        if (!nextReunion || d < new Date(nextReunion.date)) {
+          nextReunion = { label, date, n };
+        }
+      }
+    }
+  }
+  const reunionContent = nextReunion
+    ? `<div style="text-align:center;padding:12px 0">
+        <div style="font-size:13px;color:#64748B;margin-bottom:6px">Prochaine réunion</div>
+        <div style="font-size:16px;font-weight:900;color:#1E3A5F;margin-bottom:6px">${nextReunion.label}</div>
+        <div style="background:#F0FDF4;border:2px solid #BBF7D0;border-radius:12px;padding:10px;display:inline-block">
+          <span style="font-size:20px;font-weight:900;color:#166534">
+            ${new Date(nextReunion.date).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })}
+          </span>
+        </div>
+        <div style="margin-top:10px">
+          ${getDaysUntil(nextReunion.date)}
+        </div>
+      </div>`
+    : `<div style="text-align:center;padding:16px;color:#94A3B8;font-size:13px">Aucune réunion planifiée<br><span style="font-size:11px">Ajoutez une date dans la section Réunions</span></div>`;
+
+  const widgetReunion = `
+    <div class="dash-card">
+      <div class="dash-card-header" style="background:linear-gradient(135deg,#A7F3D0,#34D399)">
+        <span class="dash-card-icon">🤝</span>
+        <div>
+          <div class="dash-card-title" style="color:#1E3A5F">Prochaine réunion</div>
+          <div class="dash-card-sub" style="color:#065F46">${nextReunion ? nextReunion.label : 'Aucune planifiée'}</div>
+        </div>
+        <button class="dash-goto" onclick="gotoSection('reunions')" style="color:#065F46;border-color:#34D399">→</button>
+      </div>
+      <div class="dash-card-body">${reunionContent}</div>
+    </div>`;
+
+  // ── En-tête du tableau de bord ──
+  const header = `
+    <div style="grid-column:1/-1;background:linear-gradient(135deg,#C4B5FD,#8B5CF6);border-radius:16px;padding:20px 24px;color:white;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:22px;font-weight:900;font-family:'Nunito',sans-serif">Bonjour ${state.meta.name ? state.meta.name.split(' ').pop() : ''} 👋</div>
+        <div style="font-size:13px;opacity:.85;margin-top:2px;text-transform:capitalize">${todayStr}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;text-align:center">
+        <div style="font-size:24px;font-weight:900">${totalEleves}</div>
+        <div style="font-size:11px;opacity:.85">élèves</div>
+      </div>
+    </div>`;
+
+  container.innerHTML = header + widgetEffectifs + widgetTodo + widgetAgenda + widgetReunion;
+}
+
+function getDaysUntil(dateStr) {
+  const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return `<span style="background:#FEF9C3;color:#92400E;padding:4px 12px;border-radius:20px;font-weight:800;font-size:13px">⚡ Aujourd'hui !</span>`;
+  if (diff === 1) return `<span style="background:#FEE2E2;color:#991B1B;padding:4px 12px;border-radius:20px;font-weight:800;font-size:13px">⚠️ Demain !</span>`;
+  if (diff <= 7)  return `<span style="background:#FEF3C7;color:#92400E;padding:4px 12px;border-radius:20px;font-weight:800;font-size:13px">Dans ${diff} jours</span>`;
+  return `<span style="background:#F0FDF4;color:#166534;padding:4px 12px;border-radius:20px;font-weight:800;font-size:13px">Dans ${diff} jours</span>`;
+}
+
+
 function gotoSection(key) {
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   document.querySelectorAll('.nav-item').forEach(n => {
@@ -64,14 +254,15 @@ function gotoSection(key) {
   setTimeout(() => {
     loadFormData();
     initCanvases();
-    if (key === 'calend') showCalend('annuel');
+    if (key === 'dashboard') buildDashboard();
+  if (key === 'calend') showCalend('annuel');
     if (key === 'todo')   showTodo('rentree');
     if (key === 'reunions') showReunion(1);
   }, 50);
 }
 
 function getColor(k) {
-  return {gen:'#F9A8D4',admin:'#93C5FD',ebp:'#FDA4AF',calend:'#FCD34D',todo:'#FDE68A',reunions:'#A7F3D0',classe:'#FBCFE8'}[k]||'#E2E8F0';
+  return {dashboard:'#C4B5FD',gen:'#F9A8D4',admin:'#93C5FD',ebp:'#FDA4AF',calend:'#FCD34D',todo:'#FDE68A',reunions:'#A7F3D0',classe:'#FBCFE8'}[k]||'#E2E8F0';
 }
 
 function showTab(section, tab) {
@@ -2638,19 +2829,20 @@ function populateGCalForm() {
   const connectedPanel = document.getElementById('gcal-connected-panel');
 
   if (gcalConfig.connected && gcalConfig.accessToken && !isTokenExpired()) {
-    // Show connected state
     loginPanel.style.display     = 'none';
     connectedPanel.style.display = 'block';
     updateGCalStatus({ type:'success', msg:`✅ Connecté — dernier sync : ${gcalConfig.lastSync || 'jamais'}` });
     renderUserBadge();
-    // Restore options
     const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
     chk('gcal-opt-calend', gcalConfig.opts.calend);
     chk('gcal-opt-todo',   gcalConfig.opts.todo);
     const colorEl = document.getElementById('gcal-color');
     if (colorEl) colorEl.value = gcalConfig.color;
+    // Reconstruire la liste des calendriers depuis la config sauvegardée
+    if (gcalConfig.calendarFilters && gcalConfig.knownCalendars) {
+      buildCalendarFilterUI(gcalConfig.knownCalendars);
+    }
   } else {
-    // Show login state
     loginPanel.style.display     = 'block';
     connectedPanel.style.display = 'none';
     const el = document.getElementById('gcal-clientid');
@@ -2808,6 +3000,7 @@ async function syncGCal() {
 
     // Mémoriser les calendriers connus + construire le filtre UI
     if (!gcalConfig.calendarFilters) gcalConfig.calendarFilters = {};
+    gcalConfig.knownCalendars = calendars; // mémoriser pour rouvrir la modale
     buildCalendarFilterUI(calendars);
 
     const allEvents = [];

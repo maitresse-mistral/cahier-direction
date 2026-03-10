@@ -57,6 +57,7 @@
       <div class="sidebar-year" id="sidebar-year"></div>
       <hr class="sidebar-divider">
       <ul class="nav-sections">
+        <li class="nav-item" data-section="dashboard" onclick="gotoSection('dashboard')"><span class="nav-dot" style="background:#C4B5FD"></span>Tableau de bord</li>
         <li class="nav-item" data-section="gen"      onclick="gotoSection('gen')">      <span class="nav-dot" style="background:#F9A8D4"></span>Généralités</li>
         <li class="nav-item" data-section="admin"    onclick="gotoSection('admin')">    <span class="nav-dot" style="background:#93C5FD"></span>Administration</li>
         <li class="nav-item" data-section="ebp"      onclick="gotoSection('ebp')">      <span class="nav-dot" style="background:#FDA4AF"></span>EBP</li>
@@ -81,6 +82,14 @@
     </nav>
 
     <main class="content" id="content">
+
+      <!-- ══ TABLEAU DE BORD ══ -->
+      <section id="sec-dashboard" class="section hidden" data-color="#C4B5FD">
+        <div class="section-header" style="--c:#C4B5FD">
+          <h2>🏠 Tableau de bord</h2>
+        </div>
+        <div id="dashboard-content" style="padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px"></div>
+      </section>
 
       <!-- ══ GÉNÉRALITÉS ══ -->
       <section id="sec-gen" class="section hidden" data-color="#F9A8D4">
