@@ -2792,7 +2792,6 @@ async function fetchAllCalendars(token) {
   return (data.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor }));
 }
 
-// ── SYNC ──────────────────────────────
 async function syncGCal() {
   loadGCalConfig();
   if (!gcalConfig.accessToken || isTokenExpired()) {
@@ -2805,11 +2804,16 @@ async function syncGCal() {
 
   updateGCalStatus({ type:'loading', msg:'⏳ Synchronisation en cours…' });
   try {
-    // Get all user calendars
     const calendars = await fetchAllCalendars(gcalConfig.accessToken);
-    const allEvents = [];
 
+    // Mémoriser les calendriers connus + construire le filtre UI
+    if (!gcalConfig.calendarFilters) gcalConfig.calendarFilters = {};
+    buildCalendarFilterUI(calendars);
+
+    const allEvents = [];
     for (const cal of calendars) {
+      // Ignorer les calendriers décochés
+      if (gcalConfig.calendarFilters[cal.id] === false) continue;
       const evs = await fetchGCalEvents(cal.id, gcalConfig.accessToken, cal.color);
       allEvents.push(...evs);
     }
@@ -2829,6 +2833,34 @@ async function syncGCal() {
     updateGCalStatus({ type:'error', msg:`❌ Erreur : ${e.message}` });
     showToast('⚠️ Erreur de synchronisation');
   }
+}
+
+function buildCalendarFilterUI(calendars) {
+  const container = document.getElementById('gcal-calendars-list');
+  const filterDiv  = document.getElementById('gcal-calendars-filter');
+  if (!container || !filterDiv) return;
+
+  filterDiv.style.display = 'block';
+  container.innerHTML = '';
+
+  calendars.forEach(cal => {
+    // Par défaut coché, sauf si explicitement décoché
+    const checked = gcalConfig.calendarFilters[cal.id] !== false;
+    const color = cal.color || '#4285F4';
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:5px 8px;border-radius:8px;background:#F8FAFF;border:1.5px solid #E2E8F0';
+    label.innerHTML = `
+      <input type="checkbox" ${checked ? 'checked' : ''} style="accent-color:${color};width:15px;height:15px">
+      <span style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0"></span>
+      <span style="font-weight:600;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cal.name}</span>
+    `;
+    const cb = label.querySelector('input');
+    cb.addEventListener('change', () => {
+      gcalConfig.calendarFilters[cal.id] = cb.checked;
+      localStorage.setItem('cahier_gcal', JSON.stringify(gcalConfig));
+    });
+    container.appendChild(label);
+  });
 }
 
 // ── FETCH EVENTS (OAuth) ──────────────

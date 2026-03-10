@@ -489,6 +489,11 @@
           <label class="gcal-option-label" style="margin-top:10px">Couleur par défaut :</label>
           <input type="color" id="gcal-color" value="#4285F4" onchange="saveGCalConfig()"
             style="width:40px;height:32px;border:2px solid #E2E8F0;border-radius:8px;cursor:pointer;padding:2px">
+          <!-- Filtre par calendrier -->
+          <div id="gcal-calendars-filter" style="display:none;margin-top:14px">
+            <label class="gcal-option-label">📅 Calendriers à afficher :</label>
+            <div id="gcal-calendars-list" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:160px;overflow-y:auto;padding-right:4px"></div>
+          </div>
         </div>
         <div class="gcal-actions">
           <button class="btn-primary" onclick="syncGCal()" style="width:100%;margin-top:0;background:linear-gradient(135deg,#34A853,#4285F4)">
