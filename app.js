@@ -302,7 +302,7 @@ function gotoSection(key) {
     if (key === 'dashboard') buildDashboard();
   if (key === 'calend') showCalend('annuel');
     if (key === 'todo')   showTodo('rentree');
-    if (key === 'reunions') showReunion(1);
+    if (key === 'reunions') showReunionCat('maitres');
   }, 50);
 }
 
@@ -2624,66 +2624,194 @@ function loadTodoItems(mk) {
 // ══════════════════════════════════════
 // RÉUNIONS
 // ══════════════════════════════════════
-function buildReunions() {
-  const subtabs=document.getElementById('subtabs-reunions');
-  const content=document.getElementById('reunions-content');
-  if(!subtabs||!content) return;
-  const items=Array.from({length:15},(_,i)=>i+1);
-  subtabs.innerHTML=items.map((n,i)=>{
-    const label = getData(`reunions.r${n}.label`) || `Réunion ${n}`;
-    return `<button class="subtab ${i===0?'active':''}" id="reunion-tab-${n}" onclick="showReunion(${n})">${label}</button>`;
-  }).join('');
-  content.innerHTML=items.map(n=>{
-    const label = getData(`reunions.r${n}.label`) || `Réunion ${n}`;
-    return `
-    <div class="tab-content ${n===1?'active':'hidden'}" id="reunion-${n}">
-      <div class="reunion-card">
-        <div class="reunion-card-header">
-          <span>📋
-            <input type="text" value="${label}"
-              style="background:transparent;border:none;border-bottom:2px dashed #93C5FD;font-size:16px;font-weight:900;color:#1E3A5F;font-family:var(--font);width:220px;padding:2px 4px"
-              placeholder="Nom de la réunion…"
-              oninput="renameReunion(${n}, this.value)"
-              title="Cliquez pour renommer">
-          </span>
-          <span style="font-size:13px;font-weight:600">Prise de notes</span>
-        </div>`;
-  }).join('') /* closed below */ + '';
+const REUNION_CATS = [
+  { key:'maitres',  label:'Conseils maîtres/cycles', icon:'👩‍🏫', color:'#BBF7D0' },
+  { key:'ecole',    label:'Conseils d\'école',        icon:'🏫', color:'#BFDBFE' },
+  { key:'anim',     label:'Anim péda',                icon:'✏️', color:'#FDE68A' },
+  { key:'direct',   label:'Directeurs',               icon:'📂', color:'#E9D5FF' },
+  { key:'autres',   label:'Autres',                   icon:'📋', color:'#FCA5A5' },
+];
 
-  // Rebuild properly
-  content.innerHTML = items.map(n => {
-    const label = getData(`reunions.r${n}.label`) || `Réunion ${n}`;
+function _migrateOldReunions() {
+  // Déjà migré ?
+  if (getData('reunions._migrated')) return;
+
+  const autresIds = _getReunionIds('autres');
+  let migrated = 0;
+
+  for (let n = 1; n <= 30; n++) {
+    const old = getData(`reunions.r${n}`);
+    if (!old || typeof old !== 'object') continue;
+    // Vérifier qu'il y a au moins un champ non vide
+    const hasContent = old.label || old.date || old.notes || old.odj || old.decisions || old.participants;
+    if (!hasContent) continue;
+
+    // Générer un nouvel ID unique
+    const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
+    const newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
+    autresIds.push(newId);
+
+    // Copier les données sous la nouvelle clé
+    setData(`reunions.autres.r${newId}`, {
+      label:        old.label        || `Réunion ${n}`,
+      date:         old.date         || '',
+      heure:        old.heure        || '',
+      lieu:         old.lieu         || '',
+      participants: old.participants || '',
+      odj:          old.odj          || '',
+      notes:        old.notes        || '',
+      decisions:    old.decisions    || '',
+    });
+    migrated++;
+  }
+
+  if (migrated > 0) {
+    setData('reunions.cat.autres.ids', autresIds);
+    showToast(`✅ ${migrated} ancienne(s) réunion(s) migrée(s) → Autres`);
+  }
+
+  setData('reunions._migrated', true);
+  if (migrated > 0) debounceSave();
+}
+
+function buildReunions() {
+  const subtabs = document.getElementById('subtabs-reunions');
+  const content  = document.getElementById('reunions-content');
+  if (!subtabs || !content) return;
+
+  // Migration automatique des anciennes réunions (format r1…r15) → catégorie "autres"
+  _migrateOldReunions();
+
+  // Onglets catégories
+  subtabs.innerHTML = REUNION_CATS.map((cat, i) => {
+    const count = _getReunionIds(cat.key).length;
+    return `<button class="subtab ${i===0?'active':''}" id="rcat-tab-${cat.key}"
+      onclick="showReunionCat('${cat.key}')">${cat.icon} ${cat.label} <span style="background:rgba(0,0,0,.1);border-radius:20px;padding:1px 7px;font-size:11px">${count}</span></button>`;
+  }).join('');
+
+  // Contenu de chaque catégorie
+  content.innerHTML = REUNION_CATS.map((cat, i) =>
+    `<div class="tab-content ${i===0?'active':'hidden'}" id="rcat-${cat.key}">
+      <div id="reunions-list-${cat.key}"></div>
+      <div style="padding:8px 0 16px">
+        <button onclick="addReunion('${cat.key}')"
+          style="background:${cat.color};border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:800;cursor:pointer;color:#1E3A5F">
+          + Ajouter une réunion</button>
+      </div>
+    </div>`
+  ).join('');
+
+  // Rendre chaque liste
+  REUNION_CATS.forEach(cat => _renderReunionList(cat.key));
+  loadFormData();
+}
+
+function _getReunionIds(catKey) {
+  return getData(`reunions.cat.${catKey}.ids`) || [];
+}
+
+function _renderReunionList(catKey) {
+  const cat = REUNION_CATS.find(c => c.key === catKey);
+  const ids = _getReunionIds(catKey);
+  const container = document.getElementById(`reunions-list-${catKey}`);
+  if (!container) return;
+
+  if (ids.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:32px;color:#94A3B8;font-size:13px">
+      Aucune réunion — cliquez <strong>+ Ajouter</strong> pour commencer</div>`;
+    return;
+  }
+
+  container.innerHTML = ids.map(n => {
+    const label = getData(`reunions.${catKey}.r${n}.label`) || `${cat.label} ${n}`;
+    const date  = getData(`reunions.${catKey}.r${n}.date`)  || '';
+    const info  = date ? ` — <span style="color:#64748B;font-weight:400">${isoToFr(date)}</span>` : '';
     return `
-    <div class="tab-content ${n===1?'active':'hidden'}" id="reunion-${n}">
-      <div class="reunion-card">
-        <div class="reunion-card-header">
-          <span>📋 <input type="text" value="${label}"
-            style="background:transparent;border:none;border-bottom:2px dashed #93C5FD;font-size:16px;font-weight:900;color:#1E3A5F;font-family:var(--font);width:240px;padding:2px 6px"
+    <div class="reunion-card" id="reunion-${catKey}-${n}" style="margin-bottom:16px">
+      <div class="reunion-card-header" style="background:${cat.color}55;cursor:pointer" onclick="toggleReunion('${catKey}',${n})">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span id="reunion-toggle-${catKey}-${n}" style="font-size:12px">▶</span>
+          <input type="text" value="${label}"
+            style="background:transparent;border:none;border-bottom:2px dashed #93C5FD;font-size:15px;font-weight:900;color:#1E3A5F;font-family:var(--font);width:260px;padding:2px 6px"
             placeholder="Nom de la réunion…"
-            oninput="renameReunion(${n}, this.value)"
-            title="Cliquez pour renommer cet onglet"></span>
-          <span style="font-size:13px;font-weight:600">Prise de notes</span>
-        </div>
+            oninput="renameReunionCat('${catKey}',${n},this.value)"
+            onclick="event.stopPropagation()"
+            title="Cliquez pour renommer">${info}
+        </span>
+        <button onclick="event.stopPropagation();deleteReunion('${catKey}',${n})"
+          style="background:none;border:1.5px solid #FECACA;border-radius:8px;padding:3px 8px;color:#EF4444;cursor:pointer;font-size:12px;font-weight:700">🗑️</button>
+      </div>
+      <div id="reunion-body-${catKey}-${n}" style="display:none">
         <div class="reunion-fields">
-          <div class="reunion-field"><label>Date</label><input type="text" placeholder="jj/mm/aaaa" data-key="reunions.r${n}.date" data-datetype="date"></div>
-          <div class="reunion-field"><label>Heure</label><input type="time" data-key="reunions.r${n}.heure"></div>
-          <div class="reunion-field"><label>Lieu</label><input type="text" data-key="reunions.r${n}.lieu" placeholder="Salle des maîtres…"></div>
-          <div class="reunion-field"><label>Type</label>
-            <select data-key="reunions.r${n}.type">
-              <option>Conseil des maîtres</option><option>Conseil de cycle</option>
-              <option>Conseil d'école</option><option>Équipe éducative</option>
-              <option>Réunion parents</option><option>Autre</option>
-            </select>
-          </div>
-          <div class="reunion-field full"><label>Participants</label><textarea rows="2" data-key="reunions.r${n}.participants" placeholder="Liste des présents…"></textarea></div>
-          <div class="reunion-field full"><label>Ordre du jour</label><textarea rows="3" data-key="reunions.r${n}.odj" placeholder="Points à aborder…"></textarea></div>
-          <div class="reunion-field full"><label>Notes &amp; discussions</label><textarea rows="5" data-key="reunions.r${n}.notes" placeholder="Notes libres…"></textarea></div>
-          <div class="reunion-field full"><label>Décisions &amp; actions</label><textarea rows="3" data-key="reunions.r${n}.decisions" placeholder="Actions à mener, responsables…"></textarea></div>
+          <div class="reunion-field"><label>Date</label><input type="text" placeholder="jj/mm/aaaa" data-key="reunions.${catKey}.r${n}.date" data-datetype="date"></div>
+          <div class="reunion-field"><label>Heure</label><input type="time" data-key="reunions.${catKey}.r${n}.heure"></div>
+          <div class="reunion-field"><label>Lieu</label><input type="text" data-key="reunions.${catKey}.r${n}.lieu" placeholder="Salle des maîtres…"></div>
+          <div class="reunion-field full"><label>Participants</label><textarea rows="2" data-key="reunions.${catKey}.r${n}.participants" placeholder="Liste des présents…"></textarea></div>
+          <div class="reunion-field full"><label>Ordre du jour</label><textarea rows="3" data-key="reunions.${catKey}.r${n}.odj" placeholder="Points à aborder…"></textarea></div>
+          <div class="reunion-field full"><label>Notes &amp; discussions</label><textarea rows="5" data-key="reunions.${catKey}.r${n}.notes" placeholder="Notes libres…"></textarea></div>
+          <div class="reunion-field full"><label>Décisions &amp; actions</label><textarea rows="3" data-key="reunions.${catKey}.r${n}.decisions" placeholder="Actions à mener, responsables…"></textarea></div>
         </div>
       </div>
     </div>`;
   }).join('');
+
+  setTimeout(() => loadFormData(), 50);
 }
+
+function showReunionCat(catKey) {
+  document.querySelectorAll('#reunions-content .tab-content').forEach(t => t.classList.add('hidden'));
+  document.getElementById(`rcat-${catKey}`)?.classList.remove('hidden');
+  document.querySelectorAll('#subtabs-reunions .subtab').forEach(b =>
+    b.classList.toggle('active', b.id === `rcat-tab-${catKey}`));
+}
+
+function toggleReunion(catKey, n) {
+  const body   = document.getElementById(`reunion-body-${catKey}-${n}`);
+  const toggle = document.getElementById(`reunion-toggle-${catKey}-${n}`);
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (toggle) toggle.textContent = open ? '▼' : '▶';
+  if (open) setTimeout(() => loadFormData(), 50);
+}
+
+function addReunion(catKey) {
+  const ids = _getReunionIds(catKey);
+  // Générer un ID unique global
+  const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
+  const newId  = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
+  ids.push(newId);
+  setData(`reunions.cat.${catKey}.ids`, ids);
+  debounceSave();
+  _renderReunionList(catKey);
+  // Mettre à jour le compteur dans l'onglet
+  const tab = document.getElementById(`rcat-tab-${catKey}`);
+  if (tab) {
+    const span = tab.querySelector('span');
+    if (span) span.textContent = ids.length;
+  }
+  // Ouvrir la nouvelle réunion automatiquement
+  setTimeout(() => toggleReunion(catKey, newId), 100);
+}
+
+function deleteReunion(catKey, n) {
+  const ids = _getReunionIds(catKey);
+  if (!confirm('Supprimer cette réunion ? Les notes seront perdues.')) return;
+  const newIds = ids.filter(id => id !== n);
+  setData(`reunions.cat.${catKey}.ids`, newIds);
+  setData(`reunions.${catKey}.r${n}`, {});
+  debounceSave();
+  _renderReunionList(catKey);
+  const tab = document.getElementById(`rcat-tab-${catKey}`);
+  if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = newIds.length; }
+}
+
+function renameReunionCat(catKey, n, val) {
+  setData(`reunions.${catKey}.r${n}.label`, val);
+  debounceSave();
+}
+
+
 
 // Couleur AESH sélectionnée
 let selectedAeshColor = '#BBF7D0';
@@ -2705,20 +2833,8 @@ function applyAeshColor(cell, colorKey) {
 }
 
 
-function renameReunion(n, val) {
-  setData(`reunions.r${n}.label`, val);
-  const tab = document.getElementById(`reunion-tab-${n}`);
-  if (tab) tab.textContent = val || `Réunion ${n}`;
-  debounceSave();
-}
 
 
-function showReunion(n) {
-  document.querySelectorAll('#reunions-content .tab-content').forEach(t=>t.classList.add('hidden'));
-  document.getElementById(`reunion-${n}`)?.classList.remove('hidden');
-  document.querySelectorAll('#subtabs-reunions .subtab').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick')?.includes(`(${n})`)));
-  loadFormData();
-}
 
 // ══════════════════════════════════════
 // RDV PARENTS
