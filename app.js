@@ -1099,6 +1099,13 @@ function loadEbpRows() {
 // EBP SOINS — sorties régulières avec jours de semaine (pas de mercredi)
 const JOURS_SOINS = ['Lundi','Mardi','Jeudi','Vendredi'];
 
+// Formate automatiquement la saisie heure en HH:MM (24h)
+function formatHeure(input) {
+  let v = input.value.replace(/[^0-9]/g, '');
+  if (v.length >= 3) v = v.substring(0,2) + ':' + v.substring(2,4);
+  input.value = v;
+}
+
 function buildEbpSoinsUI() {
   const container = document.getElementById('ebp-soins-container');
   if (!container) return;
@@ -1129,8 +1136,8 @@ function renderEbpSoinsEleve(container, eleve, ei) {
             </label>`).join('')}
         </div>
       </td>
-      <td style="padding:6px 4px"><input type="time" value="${s.hsortie||''}" style="width:80px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px" onchange="saveEbpSoins()"></td>
-      <td style="padding:6px 4px"><input type="time" value="${s.hretour||''}" style="width:80px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="text" value="${s.hsortie||''}" placeholder="08:30" maxlength="5" style="width:65px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px;text-align:center" oninput="formatHeure(this)" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="text" value="${s.hretour||''}" placeholder="09:00" maxlength="5" style="width:65px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px;text-align:center" oninput="formatHeure(this)" onchange="saveEbpSoins()"></td>
       <td style="padding:6px 4px"><input type="text" value="${s.motif||''}" placeholder="Motif / Soin…" style="width:130px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
       <td style="padding:6px 4px"><input type="text" value="${s.resp||''}" placeholder="Responsable…" style="width:110px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
       <td style="padding:6px 4px"><input type="text" value="${s.obs||''}" placeholder="Observations…" style="width:120px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
@@ -1223,10 +1230,9 @@ function saveEbpSoins() {
     div.querySelectorAll('tbody tr').forEach(tr => {
       const checks = [...tr.querySelectorAll('input[type=checkbox]')];
       const jours  = checks.filter(c=>c.checked).map((_,i)=>JOURS_SOINS[i]);
-      const times  = [...tr.querySelectorAll('input[type=time]')];
       const texts  = [...tr.querySelectorAll('input[type=text]')];
-      sorties.push({ jours, hsortie:times[0]?.value||'', hretour:times[1]?.value||'',
-        motif:texts[0]?.value||'', resp:texts[1]?.value||'', obs:texts[2]?.value||'' });
+      sorties.push({ jours, hsortie:texts[0]?.value||'', hretour:texts[1]?.value||'',
+        motif:texts[2]?.value||'', resp:texts[3]?.value||'', obs:texts[4]?.value||'' });
     });
     eleves[ei] = { nom, classe, sorties };
   });
