@@ -2739,8 +2739,15 @@ function _renderReunionList(catKey) {
             onclick="event.stopPropagation()"
             title="Cliquez pour renommer">${info}
         </span>
-        <button onclick="event.stopPropagation();deleteReunion('${catKey}',${n})"
-          style="background:none;border:1.5px solid #FECACA;border-radius:8px;padding:3px 8px;color:#EF4444;cursor:pointer;font-size:12px;font-weight:700">🗑️</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <select onchange="moveReunion('${catKey}',${n},this.value);this.value=''"
+            style="border:1px solid #E2E8F0;border-radius:8px;padding:3px 6px;font-size:11px;color:#64748B;cursor:pointer">
+            <option value="">↪ Déplacer…</option>
+            ${REUNION_CATS.filter(c=>c.key!==catKey).map(c=>`<option value="${c.key}">${c.icon} ${c.label}</option>`).join('')}
+          </select>
+          <button onclick="event.stopPropagation();deleteReunion('${catKey}',${n})"
+            style="background:none;border:1.5px solid #FECACA;border-radius:8px;padding:3px 8px;color:#EF4444;cursor:pointer;font-size:12px;font-weight:700">🗑️</button>
+        </div>
       </div>
       <div id="reunion-body-${catKey}-${n}" style="display:none">
         <div class="reunion-fields">
@@ -2806,6 +2813,38 @@ function deleteReunion(catKey, n) {
   const tab = document.getElementById(`rcat-tab-${catKey}`);
   if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = newIds.length; }
 }
+
+function moveReunion(fromCat, n, toCat) {
+  if (!toCat) return;
+  // Copier les données vers la nouvelle catégorie
+  const data = getData(`reunions.${fromCat}.r${n}`) || {};
+  const toIds = _getReunionIds(toCat);
+  const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
+  const newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
+  toIds.push(newId);
+  setData(`reunions.${toCat}.r${newId}`, data);
+  setData(`reunions.cat.${toCat}.ids`, toIds);
+
+  // Supprimer de l'ancienne catégorie
+  const fromIds = _getReunionIds(fromCat).filter(id => id !== n);
+  setData(`reunions.cat.${fromCat}.ids`, fromIds);
+  setData(`reunions.${fromCat}.r${n}`, {});
+
+  debounceSave();
+
+  // Rafraîchir les deux catégories et mettre à jour les compteurs
+  _renderReunionList(fromCat);
+  _renderReunionList(toCat);
+  const catTo = REUNION_CATS.find(c => c.key === toCat);
+  showToast(`↪ Réunion déplacée vers ${catTo?.label || toCat}`);
+
+  // Mettre à jour les compteurs dans les onglets
+  REUNION_CATS.forEach(cat => {
+    const tab = document.getElementById(`rcat-tab-${cat.key}`);
+    if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = _getReunionIds(cat.key).length; }
+  });
+}
+
 
 function renameReunionCat(catKey, n, val) {
   setData(`reunions.${catKey}.r${n}.label`, val);
