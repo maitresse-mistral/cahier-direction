@@ -2190,6 +2190,8 @@ function buildAnnualCalendar() {
       debut: lendemain(vacDates.vac2.fin),     fin: veille(vacDates.vac3.debut) },
     { key:'p5', label:'Période 5', color:'#E9D5FF',
       debut: lendemain(vacDates.vac3.fin),     fin: veille(vacDates.vac5.debut) },
+    // Note : l'Ascension (vac4) est un pont noté séparément, ne découpe pas P5
+
   ];
 
   const periodesHTML = periodesAuto.map(p => {
@@ -2211,9 +2213,12 @@ function buildAnnualCalendar() {
     const fin   = vacDates[v.key].fin;
     const nb    = nbSemaines(debut, fin);
     const toDisplay = d => { if (!d) return ''; const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; };
+    const isAscension = v.key === 'vac4';
     return `
-    <tr style="background:${v.color}44">
-      <td style="font-weight:700;color:#1E3A5F;padding:8px 10px">${v.label}</td>
+    <tr style="background:${v.color}44${isAscension ? ';opacity:.85' : ''}">
+      <td style="font-weight:700;color:#1E3A5F;padding:8px 10px;font-style:${isAscension?'italic':'normal'}">
+        ${v.label}${isAscension ? ' <span style="font-size:10px;color:#94A3B8;font-weight:400">(pont)</span>' : ''}
+      </td>
       <td style="padding:6px 4px"><input type="text" placeholder="jj/mm/aaaa"
         style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:110px"
         value="${toDisplay(debut)}"
