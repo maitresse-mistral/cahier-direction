@@ -1526,9 +1526,9 @@ function showAesh(i) {
 // Couleurs par classe pour les anniversaires
 const ANNIV_CLASS_COLORS = ['#FDE68A','#BBF7D0','#BFDBFE','#FCA5A5','#E9D5FF','#FED7AA','#A5F3FC'];
 
-function buildAnnivCalendar() {
+function buildAnnivCalendar(force=false) {
   const container = document.getElementById('anniv-calendar');
-  if (!container || container.innerHTML.trim()) return;
+  if (!container || (container.innerHTML.trim() && !force)) return;
 
   const classDiv = document.getElementById('anniv-sync-classes');
   if (classDiv && !classDiv.innerHTML.trim()) {
@@ -1625,10 +1625,19 @@ function syncAnnivFromEffectifs() {
     const eleves = getData(`admin.effectifs.c${ci}`) || [];
     eleves.forEach(e => {
       if (!e.nom?.trim() || !e.ddn) return;
-      const parts = e.ddn.split('-');
-      if (parts.length < 3) return;
-      const month = parseInt(parts[1]) - 1;
-      const day   = parseInt(parts[2]);
+      // Accepter jj/mm/aaaa ET aaaa-mm-jj
+      let month, day;
+      if (e.ddn.includes('/')) {
+        const parts = e.ddn.split('/');
+        if (parts.length < 3) return;
+        day   = parseInt(parts[0]);
+        month = parseInt(parts[1]) - 1;
+      } else {
+        const parts = e.ddn.split('-');
+        if (parts.length < 3) return;
+        month = parseInt(parts[1]) - 1;
+        day   = parseInt(parts[2]);
+      }
       if (isNaN(month) || isNaN(day)) return;
 
       const label = `${e.nom.trim()} (${classNames[ci]})`;
@@ -1651,7 +1660,7 @@ function syncAnnivFromEffectifs() {
   debounceSave();
 
   const container = document.getElementById('anniv-calendar');
-  if (container) { container.innerHTML = ''; buildAnnivCalendar(); }
+  if (container) { container.innerHTML = ''; buildAnnivCalendar(true); }
   showToast(`🎂 ${added} anniversaire(s) ajouté(s) !`);
 }
 
