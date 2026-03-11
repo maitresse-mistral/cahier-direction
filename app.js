@@ -1316,17 +1316,21 @@ function renderAeshFull(aeshList) {
 
       <div style="margin-top:20px;border-top:2px solid #FDE68A;padding-top:16px">
         <h4 style="font-size:15px;font-weight:900;color:#1E3A5F;margin-bottom:8px">📅 Emploi du temps</h4>
-
-        <!-- Légende personnalisable -->
-        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px;padding:10px 14px;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:800;color:#1E3A5F">🎨 Légende</span>
-            <button onclick="addAeshLegend(${ai})" style="background:#FDE68A;border:none;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">+ Ajouter</button>
-            <span style="font-size:11px;color:#94A3B8">— Sélectionnez une entrée puis cliquez sur une cellule</span>
-          </div>
-          <div id="aesh-legend-${ai}" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <span style="font-size:11px;color:#64748B;font-weight:700">Couleur :</span>
+          ${[
+            {color:'#ffffff', label:'⬜ Libre'},
+            {color:'#BBF7D0', label:'🟢 Élève 1'},
+            {color:'#93C5FD', label:'🔵 Élève 2'},
+            {color:'#FDE68A', label:'🟡 Récré'},
+            {color:'#BFDBFE', label:'🩵 Méridienne'},
+            {color:'#FCA5A5', label:'🔴 Absent'},
+          ].map((c,ci) => `<button id="aesh-color-btn-${ai}-${ci}" onclick="setAeshColor('${c.color}',${ai},${ci})"
+            style="background:${c.color};border:1.5px solid #E2E8F0;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+            ${c.label}
+          </button>`).join('')}
+          <span style="font-size:11px;color:#94A3B8">← sélectionnez, puis cliquez une cellule</span>
         </div>
-
         <div class="aesh-edt-grid">
           <div class="aesh-cell header"></div>
           ${['Lundi','Mardi','Jeudi','Vendredi'].map(j=>`<div class="aesh-cell header">${j}</div>`).join('')}
@@ -1335,7 +1339,7 @@ function renderAeshFull(aeshList) {
               const slots = [0,1,3,4].map(d => {
                 const key = `ebp.aesh.${ai}.edt.${hKey}.${d}`;
                 const colorKey = `ebp.aesh.${ai}.edt.${hKey}.${d}_color`;
-                return `<div class="aesh-cell edt-slot" data-colorkey="${colorKey}" data-key-text="${key}"
+                return `<div class="aesh-cell edt-slot" data-colorkey="${colorKey}"
                   onclick="applyAeshColor(this,'${colorKey}')"
                   style="cursor:pointer;position:relative;user-select:none">
                   <textarea rows="2" data-key="${key}" placeholder="Élève(s)…"
@@ -1352,7 +1356,7 @@ function renderAeshFull(aeshList) {
   `).join('');
 
   loadFormData();
-  aeshList.forEach((_, ai) => { loadAeshEleves(ai); loadAeshLegend(ai); });
+  aeshList.forEach((_, ai) => loadAeshEleves(ai));
   // Restore EDT cell colors
   document.querySelectorAll('.edt-slot[data-colorkey]').forEach(cell => {
     const colorKey = cell.dataset.colorkey;
@@ -2415,79 +2419,15 @@ function buildReunions() {
   }).join('');
 }
 
-// Couleur AESH sélectionnée (palette)
+// Couleur AESH sélectionnée
 let selectedAeshColor = '#BBF7D0';
 
-// Couleurs disponibles pour la légende
-const AESH_PALETTE = ['#BBF7D0','#6EE7B7','#BFDBFE','#93C5FD','#FDE68A','#FCA5A5','#E9D5FF','#FBCFE8','#FED7AA','#A5F3FC'];
-let aeshPaletteIdx = 0;
-
-function addAeshLegend(ai) {
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [];
-  const color = AESH_PALETTE[aeshPaletteIdx % AESH_PALETTE.length];
-  aeshPaletteIdx++;
-  legends.push({ label: '', color });
-  setData(`ebp.aesh.${ai}.legends`, legends);
-  debounceSave();
-  loadAeshLegend(ai);
-}
-
-function loadAeshLegend(ai) {
-  const container = document.getElementById(`aesh-legend-${ai}`);
-  if (!container) return;
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [
-    { label: 'Libre', color: '#ffffff' },
-    { label: 'Récréation', color: '#FDE68A' },
-    { label: 'Pause méridienne', color: '#BFDBFE' },
-    { label: 'Absent', color: '#FCA5A5' },
-  ];
-  container.innerHTML = legends.map((l, li) => `
-    <span id="aesh-leg-${ai}-${li}" onclick="setAeshColorFromLegend(${ai},${li})"
-      style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;border:1.5px solid #E2E8F0;cursor:pointer;font-size:11px;font-weight:600;background:${l.color||'#ffffff'}">
-      <input type="text" value="${l.label}" placeholder="Nom…" maxlength="20"
-        style="background:transparent;border:none;width:80px;font-size:11px;font-weight:700;cursor:text"
-        onclick="event.stopPropagation()"
-        onchange="saveAeshLegendLabel(${ai},${li},this.value)">
-      <input type="color" value="${l.color||'#ffffff'}"
-        style="width:16px;height:16px;border:none;padding:0;cursor:pointer;border-radius:3px"
-        onclick="event.stopPropagation()"
-        oninput="saveAeshLegendColor(${ai},${li},this.value,this.closest('span'))">
-      <button onclick="event.stopPropagation();removeAeshLegend(${ai},${li})"
-        style="background:none;border:none;color:#94A3B8;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button>
-    </span>`).join('');
-}
-
-function saveAeshLegendLabel(ai, li, val) {
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [];
-  if (legends[li]) { legends[li].label = val; setData(`ebp.aesh.${ai}.legends`, legends); debounceSave(); }
-}
-
-function saveAeshLegendColor(ai, li, color, span) {
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [];
-  if (legends[li]) {
-    legends[li].color = color;
-    setData(`ebp.aesh.${ai}.legends`, legends);
-    if (span) span.style.background = color;
-    debounceSave();
-  }
-}
-
-function removeAeshLegend(ai, li) {
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [];
-  legends.splice(li, 1);
-  setData(`ebp.aesh.${ai}.legends`, legends);
-  debounceSave();
-  loadAeshLegend(ai);
-}
-
-function setAeshColorFromLegend(ai, li) {
-  const legends = getData(`ebp.aesh.${ai}.legends`) || [];
-  if (legends[li]) {
-    selectedAeshColor = legends[li].color || '#ffffff';
-    // Mettre en surbrillance
-    document.querySelectorAll(`[id^="aesh-leg-${ai}-"]`).forEach((el, i) => {
-      el.style.border = i === li ? '2px solid #1E3A5F' : '1.5px solid #E2E8F0';
-    });
+function setAeshColor(color, ai, ci) {
+  selectedAeshColor = color;
+  // Surbrillance du bouton sélectionné
+  for (let i = 0; i < 6; i++) {
+    const btn = document.getElementById(`aesh-color-btn-${ai}-${i}`);
+    if (btn) btn.style.border = i === ci ? '2.5px solid #1E3A5F' : '1.5px solid #E2E8F0';
   }
 }
 
