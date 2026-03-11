@@ -1070,11 +1070,15 @@ function addEbpRow(data=null) {
   const tr = document.createElement('tr');
   const d = data || {};
   const classeOpts = getClasseOptions(d.classe||'');
+  // Colonnes PAI/ESS/EE/PPRE/PPS/AESH : lecture seule, alimentées par les Effectifs
+  const roCheck = (val) => val
+    ? `<span title="Modifiable dans Effectifs" style="font-size:16px;cursor:default">✅</span>`
+    : `<span style="font-size:16px;color:#E2E8F0;cursor:default">⬜</span>`;
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:130px;padding:8px 10px;border:none;font-weight:600" onchange="saveEbpRows()"></td>
     <td><select style="border:none;padding:6px 4px;font-family:var(--font);font-size:13px" onchange="saveEbpRows()">${classeOpts}</select></td>
     ${['pai','ess','ee','ppre','pps','aesh'].map(k =>
-      `<td style="text-align:center"><input type="checkbox" ${d[k]?'checked':''} onchange="saveEbpRows()"></td>`
+      `<td style="text-align:center">${roCheck(d[k])}</td>`
     ).join('')}
     <td><input type="date" value="${d.rev1||''}" style="width:120px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="date" value="${d.rev2||''}" style="width:120px;border:none;padding:6px" onchange="saveEbpRows()"></td>
