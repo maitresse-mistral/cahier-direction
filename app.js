@@ -2032,18 +2032,124 @@ function showCalend(id) {
 
 function buildAnnualCalendar() {
   const year = parseInt(state.meta.year.split('-')[0])||2025;
-  const vacs = ['Rentrée enseignants','Rentrée élèves','Toussaint','Noël','Hiver','Printemps','Été'];
-  return `<h3 style="font-family:'Caveat',cursive;font-size:26px;color:#FB923C;margin-bottom:16px">Organisation ${year}–${year+1}</h3>
-  <div style="overflow-x:auto;border-radius:12px;box-shadow:var(--shadow)"><table class="data-table" style="min-width:700px">
-    <thead><tr style="background:#FCD34D"><th>Vacances</th><th>Dates</th><th>Sem. 1</th><th>Sem. 2</th><th>P1/P2</th><th>P3/P4</th><th>P5</th><th>Nb sem.</th></tr></thead>
-    <tbody>${vacs.map((v,i)=>`<tr>
-      ${['label','date','s1','s2','p12','p34','p5','nb'].map((f,j)=>
-        `<td><input type="${j===7?'number':'text'}" ${j===0?`value="${v}"`:`placeholder="…"`} data-key="calend.annual.v${i}.${f}" style="padding:8px 10px;width:100%;border:none${j===0?';font-weight:700':''}"></td>`
-      ).join('')}
-    </tr>`).join('')}
-    </tbody>
-  </table></div>`;
+
+  const periodes = [
+    { key:'p1', label:'Période 1', color:'#FDE68A' },
+    { key:'p2', label:'Période 2', color:'#BBF7D0' },
+    { key:'p3', label:'Période 3', color:'#BFDBFE' },
+    { key:'p4', label:'Période 4', color:'#FCA5A5' },
+    { key:'p5', label:'Période 5', color:'#E9D5FF' },
+  ];
+
+  const periodesHTML = periodes.map((p, pi) => {
+    const debut  = getData(`calend.annual.${p.key}.debut`)  || '';
+    const fin    = getData(`calend.annual.${p.key}.fin`)    || '';
+    // Calcul auto nb semaines
+    let nbSem = '';
+    if (debut && fin) {
+      const d1 = new Date(debut), d2 = new Date(fin);
+      if (!isNaN(d1) && !isNaN(d2) && d2 >= d1) {
+        nbSem = Math.round((d2 - d1) / (7 * 24 * 3600 * 1000));
+      }
+    }
+    return `
+    <tr style="background:${p.color}22">
+      <td style="font-weight:800;color:#1E3A5F;padding:8px 10px;white-space:nowrap">${p.label}</td>
+      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.${p.key}.debut"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
+        onchange="updateNbSem('${p.key}',this)" value="${debut}"></td>
+      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.${p.key}.fin"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
+        onchange="updateNbSem('${p.key}',this)" value="${fin}"></td>
+      <td style="padding:6px 10px;font-weight:800;color:#1E3A5F;text-align:center" id="nbsem-${p.key}">${nbSem ? nbSem + ' sem.' : '—'}</td>
+      <td style="padding:6px 4px"><input type="text" data-key="calend.annual.${p.key}.notes" placeholder="Notes…"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;font-size:12px;width:100%"></td>
+    </tr>`;
+  }).join('');
+
+  const vacs = ['Toussaint','Noël','Hiver','Printemps','Été'];
+  const vacsHTML = vacs.map((v, i) => {
+    const debut = getData(`calend.annual.vac${i}.debut`) || '';
+    const fin   = getData(`calend.annual.vac${i}.fin`)   || '';
+    let nbSem = '';
+    if (debut && fin) {
+      const d1 = new Date(debut), d2 = new Date(fin);
+      if (!isNaN(d1) && !isNaN(d2) && d2 >= d1) {
+        nbSem = Math.round((d2 - d1) / (7 * 24 * 3600 * 1000));
+      }
+    }
+    return `
+    <tr>
+      <td style="font-weight:700;color:#64748B;padding:8px 10px">${v}</td>
+      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.vac${i}.debut"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
+        onchange="updateNbSemVac(${i},this)" value="${debut}"></td>
+      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.vac${i}.fin"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
+        onchange="updateNbSemVac(${i},this)" value="${fin}"></td>
+      <td style="padding:6px 10px;font-weight:800;color:#1E3A5F;text-align:center" id="nbsem-vac${i}">${nbSem ? nbSem + ' sem.' : '—'}</td>
+      <td style="padding:6px 4px"><input type="text" data-key="calend.annual.vac${i}.notes" placeholder="Notes…"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;font-size:12px;width:100%"></td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <h3 style="font-family:'Caveat',cursive;font-size:26px;color:#FB923C;margin-bottom:16px">Organisation ${year}–${year+1}</h3>
+
+  <div style="overflow-x:auto;border-radius:12px;box-shadow:var(--shadow);margin-bottom:24px">
+    <table class="data-table" style="min-width:600px">
+      <thead><tr style="background:#FDE68A">
+        <th>Période</th><th>Début</th><th>Fin</th><th>Nb sem.</th><th>Notes</th>
+      </tr></thead>
+      <tbody>${periodesHTML}</tbody>
+    </table>
+  </div>
+
+  <h4 style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:8px">🏖️ Vacances scolaires</h4>
+  <div style="overflow-x:auto;border-radius:12px;box-shadow:var(--shadow)">
+    <table class="data-table" style="min-width:600px">
+      <thead><tr style="background:#BFDBFE">
+        <th>Vacances</th><th>Du</th><th>Au</th><th>Nb sem.</th><th>Notes</th>
+      </tr></thead>
+      <tbody>${vacsHTML}</tbody>
+    </table>
+  </div>`;
 }
+
+function updateNbSem(pkey, changedInput) {
+  setData(changedInput.dataset.key, changedInput.value);
+  const debut = getData(`calend.annual.${pkey}.debut`);
+  const fin   = getData(`calend.annual.${pkey}.fin`);
+  const cell  = document.getElementById(`nbsem-${pkey}`);
+  if (!cell) return;
+  if (debut && fin) {
+    const d1 = new Date(debut), d2 = new Date(fin);
+    if (!isNaN(d1) && !isNaN(d2) && d2 >= d1) {
+      cell.textContent = Math.round((d2-d1)/(7*24*3600*1000)) + ' sem.';
+      return;
+    }
+  }
+  cell.textContent = '—';
+  debounceSave();
+}
+
+function updateNbSemVac(i, changedInput) {
+  setData(changedInput.dataset.key, changedInput.value);
+  const debut = getData(`calend.annual.vac${i}.debut`);
+  const fin   = getData(`calend.annual.vac${i}.fin`);
+  const cell  = document.getElementById(`nbsem-vac${i}`);
+  if (!cell) return;
+  if (debut && fin) {
+    const d1 = new Date(debut), d2 = new Date(fin);
+    if (!isNaN(d1) && !isNaN(d2) && d2 >= d1) {
+      cell.textContent = Math.round((d2-d1)/(7*24*3600*1000)) + ' sem.';
+      return;
+    }
+  }
+  cell.textContent = '—';
+  debounceSave();
+}
+
 
 function buildPeriodCalendar(period) {
   const schoolYear = parseInt(state.meta.year.split('-')[0])||2025;
