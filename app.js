@@ -155,18 +155,20 @@ function _buildDashboardContent(container) {
 
   // ── Widget Google Agenda ──
   const todayStr2 = today.toISOString().split('T')[0];
-  const upcomingEvents = gcalEvents
-    .filter(ev => ev.start >= todayStr2)
+  const upcomingEvents = (gcalEvents || [])
+    .filter(ev => ev && ev.start && typeof ev.start === 'string' && ev.start >= todayStr2)
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 5);
 
   const evRows = upcomingEvents.map(ev => {
-    const d = new Date(ev.start + 'T12:00:00');
-    const dStr = d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
-    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;background:#F0FDF4;margin-bottom:4px">
-      <div style="background:${ev.color||'#34A853'};color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;min-width:50px;text-align:center">${dStr}</div>
-      <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||''}</span>
-    </div>`;
+    try {
+      const d = new Date(ev.start + 'T12:00:00');
+      const dStr = d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;background:#F0FDF4;margin-bottom:4px">
+        <div style="background:${ev.color||'#34A853'};color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;min-width:50px;text-align:center">${dStr}</div>
+        <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||''}</span>
+      </div>`;
+    } catch { return ''; }
   }).join('');
 
   const widgetAgenda = `
@@ -245,6 +247,30 @@ function _buildDashboardContent(container) {
 
   container.innerHTML = header + widgetEffectifs + widgetTodo + widgetAgenda + widgetReunion;
 } // fin _buildDashboardContent
+
+function refreshDashboardAgenda() {
+  const body = document.querySelector('#dashboard-content .dash-card:nth-child(4) .dash-card-body');
+  if (!body) return;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const upcomingEvents = (gcalEvents || [])
+    .filter(ev => ev && ev.start && ev.start >= todayStr)
+    .sort((a, b) => a.start.localeCompare(b.start))
+    .slice(0, 5);
+  if (upcomingEvents.length === 0) {
+    body.innerHTML = `<div style="text-align:center;padding:16px;color:#94A3B8;font-size:13px">✅ Aucun événement à venir</div>`;
+    return;
+  }
+  body.innerHTML = upcomingEvents.map(ev => {
+    try {
+      const d = new Date(ev.start + 'T12:00:00');
+      const dStr = d.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;background:#F0FDF4;margin-bottom:4px">
+        <div style="background:${ev.color||'#34A853'};color:white;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;min-width:50px;text-align:center">${dStr}</div>
+        <span style="font-size:13px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.title||''}</span>
+      </div>`;
+    } catch { return ''; }
+  }).join('');
+}
 
 function getDaysUntil(dateStr) {
   const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
@@ -3429,6 +3455,8 @@ async function syncGCal() {
     showSyncBar(true);
     updateGCalBtnDot(true);
     showToast(`📅 ${allEvents.length} événement(s) Google synchronisé(s) !`);
+    // Rafraîchir uniquement le widget agenda si le dashboard est visible
+    if (state.currentSection === 'dashboard') refreshDashboardAgenda();
   } catch(e) {
     updateGCalStatus({ type:'error', msg:`❌ Erreur : ${e.message}` });
     showToast('⚠️ Erreur de synchronisation');
