@@ -2210,20 +2210,25 @@ function buildAnnualCalendar() {
     const debut = vacDates[v.key].debut;
     const fin   = vacDates[v.key].fin;
     const nb    = nbSemaines(debut, fin);
+    const toDisplay = d => { if (!d) return ''; const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; };
     return `
     <tr style="background:${v.color}44">
       <td style="font-weight:700;color:#1E3A5F;padding:8px 10px">${v.label}</td>
-      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.${v.key}.debut"
-        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
-        onchange="updateAnnualCalendar(this)" value="${debut}"></td>
-      <td style="padding:6px 4px"><input type="date" data-key="calend.annual.${v.key}.fin"
-        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:130px"
-        onchange="updateAnnualCalendar(this)" value="${fin}"></td>
+      <td style="padding:6px 4px"><input type="text" placeholder="jj/mm/aaaa"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:110px"
+        value="${toDisplay(debut)}"
+        onchange="updateAnnualDate('calend.annual.${v.key}.debut', this)"></td>
+      <td style="padding:6px 4px"><input type="text" placeholder="jj/mm/aaaa"
+        style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 6px;font-size:12px;width:110px"
+        value="${toDisplay(fin)}"
+        onchange="updateAnnualDate('calend.annual.${v.key}.fin', this)"></td>
       <td style="padding:6px 10px;font-weight:800;color:#1E3A5F;text-align:center">${nb !== null ? nb + ' sem.' : '—'}</td>
       <td style="padding:6px 4px"><input type="text" data-key="calend.annual.${v.key}.notes" placeholder="Notes…"
         style="border:1px solid #E2E8F0;border-radius:6px;padding:4px 8px;font-size:12px;width:100%"></td>
     </tr>`;
   }).join('');
+
+  const toDisplay = d => { if (!d) return ''; const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; };
 
   return `
   <h3 style="font-family:'Caveat',cursive;font-size:26px;color:#FB923C;margin-bottom:16px">Organisation ${year}–${year+1}</h3>
@@ -2232,9 +2237,9 @@ function buildAnnualCalendar() {
   <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
     <div style="display:flex;align-items:center;gap:8px">
       <label style="font-size:12px;font-weight:700;color:#1E3A5F">🏫 Rentrée :</label>
-      <input type="date" data-key="calend.annual.rentree" value="${rentree}"
-        style="border:1.5px solid #FDE68A;border-radius:8px;padding:4px 8px;font-size:12px"
-        onchange="updateAnnualCalendar(this)">
+      <input type="text" placeholder="jj/mm/aaaa" value="${toDisplay(rentree)}"
+        style="border:1.5px solid #FDE68A;border-radius:8px;padding:4px 8px;font-size:12px;width:110px"
+        onchange="updateAnnualDate('calend.annual.rentree', this)">
     </div>
     <span style="font-size:11px;color:#94A3B8">← Remplissez les dates de vacances pour calculer automatiquement les périodes</span>
   </div>
@@ -2260,6 +2265,27 @@ function buildAnnualCalendar() {
       <tbody id="periodes-tbody">${periodesHTML}</tbody>
     </table>
   </div>`;
+}
+
+function updateAnnualDate(key, input) {
+  // Convertir jj/mm/aaaa → aaaa-mm-jj
+  const val = input.value.trim();
+  let iso = '';
+  if (val) {
+    const parts = val.split('/');
+    if (parts.length === 3 && parts[2].length === 4) {
+      iso = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    }
+  }
+  if (iso || !val) {
+    setData(key, iso);
+    debounceSave();
+    const panel = document.getElementById('calend-annuel');
+    if (panel) { panel.innerHTML = buildAnnualCalendar(); setTimeout(() => loadFormData(), 50); }
+  } else {
+    input.style.borderColor = '#EF4444';
+    setTimeout(() => input.style.borderColor = '', 1500);
+  }
 }
 
 function updateAnnualCalendar(input) {
