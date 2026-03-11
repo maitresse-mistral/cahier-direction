@@ -1,5 +1,10 @@
 /* ═══ CAHIER DE DIRECTION — APP.JS v3 ═══ */
 
+// ── Utilitaires dates jj/mm/aaaa ──
+function isoToFr(iso){if(!iso)return "";const p=iso.split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
+function frToIso(fr){if(!fr)return "";const p=fr.trim().split("/");if(p.length!==3||p[2].length!==4)return "";return `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;}
+
+
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const CLASSES_NOMS = ['CP','CE1','CE2','CM1','CM2'];
@@ -504,7 +509,7 @@ function addCmdRow(ci, data=null) {
   // data format: [n°, date, fournisseur, ttc, livré, notes]
   tr.innerHTML = `
     <td><input type="text" value="${data?data[0]:n}" style="width:36px;text-align:center"></td>
-    <td><input type="date" value="${data?data[1]:''}"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${data?isoToFr(data[1]):''}"></td>
     <td><select class="fourn-select" onchange="handleFourniChange(this,${ci})">${fopts}</select></td>
     <td><input type="number" value="${data?data[3]:''}" min="0" step="0.01" oninput="calcCommandeClass(${ci})" style="width:100px;font-weight:700"></td>
     <td><select onchange="saveCmdData(${ci})">
@@ -866,7 +871,7 @@ function addEffectifsRow(ci, data=null) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:150px;border:none;padding:8px 10px;font-weight:600" oninput="calcEffectifsTotals(${ci})"></td>
-    <td><input type="date" value="${d.ddn||''}" style="border:none;padding:6px 4px;font-size:12px" onchange="saveEffectifsClass(${ci})"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.ddn||'')}" style="border:none;padding:6px 4px;font-size:12px;width:110px" onchange="this.value=frToIso(this.value)||this.value;saveEffectifsClass(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="f" ${d.genre==='f'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="g" ${d.genre==='g'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
     ${niveauPickerHTML(d.niv1||'', ci, 0)}
@@ -1104,9 +1109,9 @@ function addEbpRow(data=null) {
     ${['pai','ess','ee','ppre','pps','aesh'].map(k =>
       `<td style="text-align:center">${roCheck(d[k])}</td>`
     ).join('')}
-    <td><input type="date" value="${d.rev1||''}" style="width:120px;border:none;padding:6px" onchange="saveEbpRows()"></td>
-    <td><input type="date" value="${d.rev2||''}" style="width:120px;border:none;padding:6px" onchange="saveEbpRows()"></td>
-    <td><input type="date" value="${d.rev3||''}" style="width:120px;border:none;padding:6px" onchange="saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev1||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev2||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev3||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
     <td><input type="text" value="${d.obs||''}" placeholder="Observations…" style="min-width:160px;border:none;padding:8px 10px" onchange="saveEbpRows()"></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEbpRows()">×</button></td>
   `;
@@ -1340,7 +1345,7 @@ function renderAeshFull(aeshList) {
           <div class="field-group"><label>Type de contrat</label>
             <input type="text" data-key="ebp.aesh.${ai}.contrat" placeholder="AESH-co, AESH-i…"></div>
           <div class="field-group"><label>Date fin de contrat</label>
-            <input type="date" data-key="ebp.aesh.${ai}.fin"></div>
+            <input type="text" placeholder="jj/mm/aaaa" data-key="ebp.aesh.${ai}.fin" data-datetype="date"></div>
         </div>
         <button onclick="deleteAeshAgent(${ai})"
           style="margin-left:16px;background:none;border:1.5px solid #FECACA;border-radius:8px;padding:6px 10px;color:#EF4444;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0"
@@ -1654,7 +1659,7 @@ function buildAutosortiesUI() {
         <input type="text" value="${sortie.nom||''}" placeholder="Nom de la sortie…"
           style="flex:1;background:transparent;border:none;border-bottom:2px solid #F9A8D4;font-size:16px;font-weight:900;color:#1E3A5F;font-family:var(--font);padding:2px 4px"
           oninput="renameSortie(${si},this.value)">
-        <input type="date" value="${sortie.date||''}" style="border:none;background:transparent;font-family:var(--font);font-size:13px" onchange="updateSortieDate(${si},this.value)">
+        <input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(sortie.date||'')}" style="border:none;background:transparent;font-family:var(--font);font-size:13px;width:100px" onchange="updateSortieDate(${si},frToIso(this.value)||this.value)">
         <button class="btn-xs" onclick="addSortieEleve(${si})">+ Élève</button>
         <button onclick="deleteSortie(${si})" style="background:none;border:1.5px solid #FECACA;border-radius:8px;padding:4px 8px;color:#EF4444;cursor:pointer;font-size:12px">🗑️</button>
       </div>
@@ -1847,7 +1852,7 @@ function addCoopRow(data=null) {
   const d = data || {};
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="date" value="${d[0]||''}" oninput="calcCoop()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d[0]||'')}" style="width:100px" oninput="calcCoop()"></td>
     <td><input type="text" value="${d[1]||''}" placeholder="Libellé…" oninput="calcCoop()"></td>
     <td><input type="number" value="${d[2]||''}" min="0" step="0.01" placeholder="0.00" oninput="calcCoop()" style="color:#22C55E;font-weight:700;width:90px"></td>
     <td><input type="number" value="${d[3]||''}" min="0" step="0.01" placeholder="0.00" oninput="calcCoop()" style="color:#EF4444;font-weight:700;width:90px"></td>
@@ -2660,7 +2665,7 @@ function buildReunions() {
           <span style="font-size:13px;font-weight:600">Prise de notes</span>
         </div>
         <div class="reunion-fields">
-          <div class="reunion-field"><label>Date</label><input type="date" data-key="reunions.r${n}.date"></div>
+          <div class="reunion-field"><label>Date</label><input type="text" placeholder="jj/mm/aaaa" data-key="reunions.r${n}.date" data-datetype="date"></div>
           <div class="reunion-field"><label>Heure</label><input type="time" data-key="reunions.r${n}.heure"></div>
           <div class="reunion-field"><label>Lieu</label><input type="text" data-key="reunions.r${n}.lieu" placeholder="Salle des maîtres…"></div>
           <div class="reunion-field"><label>Type</label>
@@ -2729,7 +2734,7 @@ function addRdvFicheFromData(f){
   const div=document.createElement('div'); div.className='rdv-fiche'; div.dataset.id=f.id;
   div.innerHTML=`<button class="rdv-delete" onclick="this.parentElement.remove();saveRdvData()">×</button>
     <label>Élève</label><input type="text" value="${f.eleve||''}" placeholder="Nom &amp; Prénom" onchange="saveRdvData()">
-    <label>Date</label><input type="date" value="${f.date||''}" onchange="saveRdvData()">
+    <label>Date</label><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(f.date||'')}" onchange="f.date=frToIso(this.value)||this.value;saveRdvData()">
     <label>Demandé par</label>
     <div class="rdv-demande">
       <label><input type="radio" name="rdv-dem-${f.id}" value="parents" ${f.demande!=='ecole'?'checked':''} onchange="saveRdvData()"> Parents</label>
@@ -2783,6 +2788,7 @@ function loadFormData(){
       const val=getData(el.dataset.key); if(val===undefined||val===null) return;
       if(el.type==='checkbox') el.checked=!!val;
       else if(el.tagName==='SELECT') el.value=val;
+      else if(el.dataset.datetype==='date') el.value=isoToFr(val); // champ date texte
       else el.value=val;
     });
     bindFormInputs();
@@ -2791,7 +2797,12 @@ function loadFormData(){
 function bindFormInputs(){
   document.querySelectorAll('[data-key]:not(.editable-table)').forEach(el=>{
     if(el._bound) return; el._bound=true;
-    el.addEventListener(el.type==='checkbox'?'change':'input',()=>{setData(el.dataset.key,el.type==='checkbox'?el.checked:el.value);debounceSave();});
+    el.addEventListener(el.type==='checkbox'?'change':'input',()=>{
+      let v = el.type==='checkbox'?el.checked:el.value;
+      if(el.dataset.datetype==='date') v = frToIso(v) || v; // convertir en ISO pour stockage
+      setData(el.dataset.key, v);
+      debounceSave();
+    });
   });
 }
 
