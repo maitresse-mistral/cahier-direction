@@ -2633,26 +2633,29 @@ const REUNION_CATS = [
 ];
 
 function _migrateOldReunions() {
-  // Déjà migré ?
-  if (getData('reunions._migrated')) return;
-
+  // Chercher toutes les anciennes réunions r1…r30
   const autresIds = _getReunionIds('autres');
   let migrated = 0;
 
   for (let n = 1; n <= 30; n++) {
     const old = getData(`reunions.r${n}`);
     if (!old || typeof old !== 'object') continue;
-    // Vérifier qu'il y a au moins un champ non vide
     const hasContent = old.label || old.date || old.notes || old.odj || old.decisions || old.participants;
     if (!hasContent) continue;
 
-    // Générer un nouvel ID unique
+    // Éviter les doublons
+    const alreadyMigrated = autresIds.some(id => {
+      const d = getData(`reunions.autres.r${id}`);
+      return d && d._fromOld === n;
+    });
+    if (alreadyMigrated) continue;
+
     const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
     const newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
     autresIds.push(newId);
 
-    // Copier les données sous la nouvelle clé
     setData(`reunions.autres.r${newId}`, {
+      _fromOld:     n,
       label:        old.label        || `Réunion ${n}`,
       date:         old.date         || '',
       heure:        old.heure        || '',
@@ -2667,11 +2670,9 @@ function _migrateOldReunions() {
 
   if (migrated > 0) {
     setData('reunions.cat.autres.ids', autresIds);
-    showToast(`✅ ${migrated} ancienne(s) réunion(s) migrée(s) → Autres`);
+    showToast(`✅ ${migrated} ancienne(s) réunion(s) récupérée(s) → Autres`);
+    debounceSave();
   }
-
-  setData('reunions._migrated', true);
-  if (migrated > 0) debounceSave();
 }
 
 function buildReunions() {
