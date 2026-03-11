@@ -1523,45 +1523,62 @@ function showAesh(i) {
 // ══════════════════════════════════════
 // ANNIVERSAIRES CALENDRIER
 // ══════════════════════════════════════
+// Couleurs par classe pour les anniversaires
+const ANNIV_CLASS_COLORS = ['#FDE68A','#BBF7D0','#BFDBFE','#FCA5A5','#E9D5FF','#FED7AA','#A5F3FC'];
+
 function buildAnnivCalendar() {
   const container = document.getElementById('anniv-calendar');
   if (!container || container.innerHTML.trim()) return;
 
-  // Remplir les cases de sélection de classes
   const classDiv = document.getElementById('anniv-sync-classes');
   if (classDiv && !classDiv.innerHTML.trim()) {
     const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
     classDiv.innerHTML = classNames.map((nom, i) =>
-      `<label style="display:flex;align-items:center;gap:4px;background:#FDF2F8;border:1.5px solid #FBCFE8;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;color:#DB2777">
+      `<label style="display:flex;align-items:center;gap:4px;background:${ANNIV_CLASS_COLORS[i]}44;border:1.5px solid ${ANNIV_CLASS_COLORS[i]};border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;color:#1E3A5F">
         <input type="checkbox" value="${i}" checked style="accent-color:#DB2777"> ${nom}
       </label>`
     ).join('');
   }
 
   const schoolYear = parseInt(state.meta.year.split('-')[0]) || 2025;
-  // Months Sep to Jul
   const monthList = [8,9,10,11,0,1,2,3,4,5,6];
   container.innerHTML = `<div class="anniv-months">` + monthList.map(m => {
     const year = m >= 8 ? schoolYear : schoolYear + 1;
     const saved = getData(`classe.anniv.${m}`) || [];
+    const sorted = [...saved].sort((a,b) => (parseInt(a.day)||0) - (parseInt(b.day)||0));
     return `
       <div class="anniv-month-card">
         <div class="anniv-month-header" style="--c:#FBCFE8">🎂 ${MONTHS_FR[m]} ${year}</div>
         <div class="anniv-month-body" id="anniv-body-${m}">
-          ${saved.map(e => annivRowHTML(m, e.day, e.name)).join('')}
+          ${sorted.map(e => annivRowHTML(m, e.day, e.name, e.ci)).join('')}
         </div>
         <button class="add-anniv-btn" onclick="addAnnivEntry(${m})">+ Ajouter un anniversaire</button>
       </div>`;
   }).join('') + `</div>`;
 }
 
-function annivRowHTML(m, day='', name='') {
-  return `<div class="anniv-row">
-    <div class="anniv-day" style="background:#FBCFE8">
-      <input type="number" value="${day}" min="1" max="31" placeholder="j" style="width:30px;border:none;background:transparent;text-align:center;font-weight:800;font-size:13px" onchange="saveAnniv(${m})">
+function annivRowHTML(m, day='', name='', ci=null) {
+  const color = ci !== null && ci !== undefined ? (ANNIV_CLASS_COLORS[ci] || '#FBCFE8') : '#FBCFE8';
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const classOpts = classNames.map((n,i) =>
+    `<option value="${i}" ${ci==i?'selected':''}>${n}</option>`
+  ).join('');
+  return `<div class="anniv-row" style="border-left:4px solid ${color};margin-bottom:4px;border-radius:0 8px 8px 0;background:${color}22">
+    <div class="anniv-day" style="background:${color};border-radius:6px;min-width:32px;text-align:center">
+      <input type="number" value="${day}" min="1" max="31" placeholder="j"
+        style="width:28px;border:none;background:transparent;text-align:center;font-weight:800;font-size:13px"
+        onchange="saveAnniv(${m})">
     </div>
-    <input type="text" value="${name}" placeholder="Prénom Nom, Classe…" onchange="saveAnniv(${m})">
-    <button style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:16px" onclick="this.closest('.anniv-row').remove();saveAnniv(${m})">×</button>
+    <input type="text" value="${name}" placeholder="Prénom Nom…"
+      style="flex:1;border:none;background:transparent;padding:4px 8px;font-size:13px"
+      onchange="saveAnniv(${m})">
+    <select onchange="saveAnniv(${m})"
+      style="border:none;background:${color}55;border-radius:6px;padding:2px 4px;font-size:11px;font-weight:700;color:#1E3A5F;max-width:70px">
+      <option value="">—</option>
+      ${classOpts}
+    </select>
+    <button style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:16px;padding:0 4px"
+      onclick="this.closest('.anniv-row').remove();saveAnniv(${m})">×</button>
   </div>`;
 }
 
@@ -1574,10 +1591,14 @@ function addAnnivEntry(m) {
 function saveAnniv(m) {
   const body = document.getElementById(`anniv-body-${m}`);
   if (!body) return;
-  const entries = [...body.querySelectorAll('.anniv-row')].map(row => ({
-    day: row.querySelector('input[type=number]')?.value || '',
-    name: row.querySelector('input[type=text]')?.value || '',
-  }));
+  const entries = [...body.querySelectorAll('.anniv-row')].map(row => {
+    const ci = row.querySelector('select')?.value;
+    return {
+      day:  row.querySelector('input[type=number]')?.value || '',
+      name: row.querySelector('input[type=text]')?.value   || '',
+      ci:   ci !== '' && ci !== undefined ? parseInt(ci) : null,
+    };
+  });
   setData(`classe.anniv.${m}`, entries); debounceSave();
 }
 
@@ -1614,7 +1635,7 @@ function syncAnnivFromEffectifs() {
       if (existing[label.toLowerCase()]) return;
 
       if (!toAdd[month]) toAdd[month] = [];
-      toAdd[month].push({ day, name: label });
+      toAdd[month].push({ day, name: label, ci });
       existing[label.toLowerCase()] = true;
       added++;
     });
