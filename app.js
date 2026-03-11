@@ -54,12 +54,10 @@ function startApp(fromStorage = false) {
 function buildDashboard() {
   const container = document.getElementById('dashboard-content');
   if (!container) return;
-  console.log('🔵 buildDashboard appelé, section:', state.currentSection);
   try {
     _buildDashboardContent(container);
-    console.log('✅ buildDashboard terminé');
   } catch(e) {
-    console.error('❌ Dashboard error:', e);
+    console.error('Dashboard error:', e);
     container.innerHTML = `<div style="grid-column:1/-1;padding:20px;background:#FEE2E2;border-radius:12px;color:#991B1B">
       <strong>⚠️ Erreur tableau de bord</strong><br><code style="font-size:11px">${e.message}</code>
     </div>`;
@@ -282,7 +280,6 @@ function getDaysUntil(dateStr) {
 
 
 function gotoSection(key) {
-  console.log('🔵 gotoSection:', key, '— appelé depuis:', new Error().stack.split('\n')[2]?.trim());
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.section === key);
