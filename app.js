@@ -2805,7 +2805,7 @@ async function tryAutoReconnect() {
 }
 
 // ── Sauvegarde ──
-let oneDrivePermGranted = sessionStorage.getItem('od_perm') === '1';
+let oneDrivePermGranted = false;
 
 async function saveAll() {
   try {
@@ -2816,17 +2816,10 @@ async function saveAll() {
 
   if (fileHandle) {
     try {
-      let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
-      if (perm === 'granted') {
-        oneDrivePermGranted = true;
-        sessionStorage.setItem('od_perm', '1');
-      } else if (!oneDrivePermGranted) {
-        perm = await fileHandle.requestPermission({ mode: 'readwrite' });
-        oneDrivePermGranted = (perm === 'granted');
-        if (oneDrivePermGranted) sessionStorage.setItem('od_perm', '1');
-      }
-      if (!oneDrivePermGranted) {
-        showToast('💾 Sauvegardé localement (cliquez ☁️ pour autoriser OneDrive)');
+      // Jamais de requestPermission ici — seulement vérifier silencieusement
+      const perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        // Permission non accordée — sauvegarde locale seulement, sans popup
         return;
       }
       const w = await fileHandle.createWritable();
@@ -2840,6 +2833,13 @@ async function saveAll() {
     }
   }
   showToast('💾 Sauvegardé localement');
+}
+
+// Demander la permission manuellement (bouton 💾 ou ☁️)
+async function requestOneDrivePerm() {
+  if (!fileHandle) return false;
+  const perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+  return perm === 'granted';
 }
 
 function loadAllData() {
