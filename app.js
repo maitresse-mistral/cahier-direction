@@ -1099,53 +1099,158 @@ function loadEbpRows() {
 // EBP SOINS — sorties régulières avec jours de semaine (pas de mercredi)
 const JOURS_SOINS = ['Lundi','Mardi','Jeudi','Vendredi'];
 
-function addEbpSoinsRow(data=null) {
-  const body = document.getElementById('ebp-soins-body');
-  if (!body) return;
-  const d = data || {};
-  const joursChecked = d.jours || [];
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:120px;border:none;padding:8px 10px" onchange="saveEbpSoins()"></td>
-    <td><input type="text" value="${d.classe||''}" style="width:55px;border:none;padding:8px 6px" onchange="saveEbpSoins()"></td>
-    <td style="min-width:160px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 6px">
-        ${JOURS_SOINS.map(j => `
-          <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap">
-            <input type="checkbox" ${joursChecked.includes(j)?'checked':''} onchange="saveEbpSoins()" style="accent-color:#FDA4AF">
-            ${j}
-          </label>`).join('')}
-      </div>
-    </td>
-    <td><input type="time" value="${d.hsortie||''}" style="width:90px;border:none;padding:6px 8px" onchange="saveEbpSoins()"></td>
-    <td><input type="time" value="${d.hretour||''}" style="width:90px;border:none;padding:6px 8px" onchange="saveEbpSoins()"></td>
-    <td><input type="text" value="${d.motif||''}" placeholder="Motif / Soin…" style="min-width:120px;border:none;padding:8px 10px" onchange="saveEbpSoins()"></td>
-    <td><input type="text" value="${d.resp||''}" placeholder="Responsable…" style="min-width:100px;border:none;padding:8px 10px" onchange="saveEbpSoins()"></td>
-    <td><input type="text" value="${d.obs||''}" placeholder="Observations…" style="min-width:120px;border:none;padding:8px 10px" onchange="saveEbpSoins()"></td>
-    <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEbpSoins()">×</button></td>
-  `;
-  body.appendChild(tr);
+function buildEbpSoinsUI() {
+  const container = document.getElementById('ebp-soins-container');
+  if (!container) return;
+  const eleves = getData('ebp.soins') || [];
+  container.innerHTML = '';
+  if (eleves.length === 0) {
+    // 3 élèves vides par défaut
+    for (let i = 0; i < 3; i++) addEbpSoinsEleve();
+  } else {
+    eleves.forEach((e, ei) => renderEbpSoinsEleve(container, e, ei));
+  }
+}
+
+function renderEbpSoinsEleve(container, eleve, ei) {
+  const div = document.createElement('div');
+  div.dataset.ei = ei;
+  div.style.cssText = 'background:white;border:1.5px solid #FCE7F3;border-radius:14px;margin-bottom:12px;overflow:hidden';
+
+  const sorties = eleve.sorties || [{}];
+  const sortiesHTML = sorties.map((s, si) => `
+    <tr data-si="${si}">
+      <td style="padding:6px 8px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${JOURS_SOINS.map(j => `
+            <label style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;white-space:nowrap">
+              <input type="checkbox" ${(s.jours||[]).includes(j)?'checked':''} onchange="saveEbpSoins()" style="accent-color:#FDA4AF">
+              ${j.substring(0,3)}
+            </label>`).join('')}
+        </div>
+      </td>
+      <td style="padding:6px 4px"><input type="time" value="${s.hsortie||''}" style="width:80px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="time" value="${s.hretour||''}" style="width:80px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 6px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="text" value="${s.motif||''}" placeholder="Motif / Soin…" style="width:130px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="text" value="${s.resp||''}" placeholder="Responsable…" style="width:110px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td style="padding:6px 4px"><input type="text" value="${s.obs||''}" placeholder="Observations…" style="width:120px;border:1px solid #FCE7F3;border-radius:6px;padding:4px 8px;font-size:12px" onchange="saveEbpSoins()"></td>
+      <td class="no-print" style="padding:4px"><button class="delete-row-btn" onclick="removeEbpSortie(${ei},${si})">×</button></td>
+    </tr>`).join('');
+
+  div.innerHTML = `
+    <div style="background:linear-gradient(135deg,#FCE7F3,#FDE8F0);padding:10px 14px;display:flex;align-items:center;gap:10px">
+      <input type="text" value="${eleve.nom||''}" placeholder="Nom Prénom…" 
+        style="font-weight:800;font-size:13px;color:#1E3A5F;border:none;background:transparent;width:160px;border-bottom:2px solid #FDA4AF;padding:2px 4px"
+        onchange="saveEbpSoins()">
+      <input type="text" value="${eleve.classe||''}" placeholder="Classe"
+        style="font-size:12px;color:#64748B;border:none;background:transparent;width:50px;border-bottom:1.5px solid #FDA4AF;padding:2px 4px"
+        onchange="saveEbpSoins()">
+      <button onclick="addEbpSortie(${ei})" style="margin-left:auto;background:#FDA4AF;color:white;border:none;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">+ Sortie</button>
+      <button class="delete-row-btn no-print" onclick="removeEbpEleve(${ei})">×</button>
+    </div>
+    <div class="table-wrap" style="margin:0">
+      <table class="data-table" style="margin:0">
+        <thead><tr>
+          <th style="font-size:11px">Jours</th>
+          <th style="font-size:11px">H. sortie</th>
+          <th style="font-size:11px">H. retour</th>
+          <th style="font-size:11px">Motif / Soin</th>
+          <th style="font-size:11px">Responsable</th>
+          <th style="font-size:11px">Observations</th>
+          <th class="no-print"></th>
+        </tr></thead>
+        <tbody data-ei="${ei}">${sortiesHTML}</tbody>
+      </table>
+    </div>`;
+  container.appendChild(div);
+}
+
+function addEbpSoinsEleve() {
+  const eleves = getData('ebp.soins') || [];
+  eleves.push({ nom:'', classe:'', sorties:[{}] });
+  setData('ebp.soins', eleves);
+  const container = document.getElementById('ebp-soins-container');
+  if (container) renderEbpSoinsEleve(container, eleves[eleves.length-1], eleves.length-1);
+  debounceSave();
+}
+
+function addEbpSortie(ei) {
+  saveEbpSoins();
+  const eleves = getData('ebp.soins') || [];
+  if (!eleves[ei]) return;
+  if (!eleves[ei].sorties) eleves[ei].sorties = [];
+  eleves[ei].sorties.push({});
+  setData('ebp.soins', eleves);
+  // Reconstruire l'affichage
+  const container = document.getElementById('ebp-soins-container');
+  if (container) { container.innerHTML=''; eleves.forEach((e,i) => renderEbpSoinsEleve(container,e,i)); }
+  debounceSave();
+}
+
+function removeEbpSortie(ei, si) {
+  saveEbpSoins();
+  const eleves = getData('ebp.soins') || [];
+  if (!eleves[ei]?.sorties) return;
+  eleves[ei].sorties.splice(si, 1);
+  if (eleves[ei].sorties.length === 0) eleves[ei].sorties = [{}];
+  setData('ebp.soins', eleves);
+  const container = document.getElementById('ebp-soins-container');
+  if (container) { container.innerHTML=''; eleves.forEach((e,i) => renderEbpSoinsEleve(container,e,i)); }
+  debounceSave();
+}
+
+function removeEbpEleve(ei) {
+  if (!confirm('Supprimer cet élève ?')) return;
+  saveEbpSoins();
+  const eleves = getData('ebp.soins') || [];
+  eleves.splice(ei, 1);
+  setData('ebp.soins', eleves);
+  const container = document.getElementById('ebp-soins-container');
+  if (container) { container.innerHTML=''; eleves.forEach((e,i) => renderEbpSoinsEleve(container,e,i)); }
+  debounceSave();
 }
 
 function saveEbpSoins() {
-  const rows = [...document.querySelectorAll('#ebp-soins-body tr')].map(tr => {
-    const inputs = tr.querySelectorAll('input[type="text"], input[type="time"]');
-    const jours = [...tr.querySelectorAll('input[type="checkbox"]')]
-      .filter(c => c.checked).map((c,i) => JOURS_SOINS[i]);
-    return { nom:inputs[0]?.value, classe:inputs[1]?.value, jours,
-      hsortie:inputs[2]?.value, hretour:inputs[3]?.value,
-      motif:inputs[4]?.value, resp:inputs[5]?.value, obs:inputs[6]?.value };
+  const container = document.getElementById('ebp-soins-container');
+  if (!container) return;
+  const eleves = [];
+  container.querySelectorAll('[data-ei]').forEach(div => {
+    const ei = parseInt(div.dataset.ei);
+    const headerInputs = div.querySelectorAll(':scope > div input');
+    const nom    = headerInputs[0]?.value || '';
+    const classe = headerInputs[1]?.value || '';
+    const sorties = [];
+    div.querySelectorAll('tbody tr').forEach(tr => {
+      const checks = [...tr.querySelectorAll('input[type=checkbox]')];
+      const jours  = checks.filter(c=>c.checked).map((_,i)=>JOURS_SOINS[i]);
+      const times  = [...tr.querySelectorAll('input[type=time]')];
+      const texts  = [...tr.querySelectorAll('input[type=text]')];
+      sorties.push({ jours, hsortie:times[0]?.value||'', hretour:times[1]?.value||'',
+        motif:texts[0]?.value||'', resp:texts[1]?.value||'', obs:texts[2]?.value||'' });
+    });
+    eleves[ei] = { nom, classe, sorties };
   });
-  setData('ebp.soins', rows); debounceSave();
+  setData('ebp.soins', eleves.filter(Boolean));
+  debounceSave();
 }
 
 function loadEbpSoinsRows() {
-  const body = document.getElementById('ebp-soins-body');
-  if (!body || body.children.length > 0) return;
+  const container = document.getElementById('ebp-soins-container');
+  if (!container || container.children.length > 0) return;
+  // Migration ancien format (tableau plat) → nouveau format (élèves avec sorties)
   const saved = getData('ebp.soins') || [];
-  if (saved.length === 0) { for(let i=0;i<3;i++) addEbpSoinsRow(); }
-  else saved.forEach(r => addEbpSoinsRow(r));
+  if (saved.length > 0 && !saved[0].sorties) {
+    // Ancien format : convertir
+    const converted = saved.map(r => ({
+      nom: r.nom||'', classe: r.classe||'',
+      sorties: [{ jours:r.jours||[], hsortie:r.hsortie||'', hretour:r.hretour||'',
+        motif:r.motif||'', resp:r.resp||'', obs:r.obs||'' }]
+    }));
+    setData('ebp.soins', converted);
+  }
+  buildEbpSoinsUI();
 }
+
 
 // ══════════════════════════════════════
 // AESH EMPLOIS DU TEMPS

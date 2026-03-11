@@ -306,20 +306,9 @@
         <div class="tab-content hidden" id="ebp-soins">
           <h3>Sorties et soins réguliers</h3>
           <div class="import-bar">
-            <button class="btn-xs" onclick="addEbpSoinsRow()">+ Ajouter ligne</button>
+            <button class="btn-xs" onclick="addEbpSoinsEleve()">+ Ajouter un élève</button>
           </div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead><tr>
-                <th>Nom &amp; Prénom</th><th>Classe</th>
-                <th>Jours (Lun / Mar / Jeu / Ven)</th>
-                <th>H. sortie</th><th>H. retour</th>
-                <th>Motif / Soin</th><th>Responsable</th><th>Observations</th>
-                <th class="no-print"></th>
-              </tr></thead>
-              <tbody id="ebp-soins-body"></tbody>
-            </table>
-          </div>
+          <div id="ebp-soins-container"></div>
         </div>
 
         <!-- AESH : emplois du temps 6 AESH -->
