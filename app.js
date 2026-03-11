@@ -36,7 +36,7 @@ function startApp(fromStorage = false) {
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('topbar-info').textContent = `${state.meta.school} — ${state.meta.year}`;
   document.getElementById('sidebar-school').textContent = state.meta.school;
-  document.getElementById('sidebar-year').textContent = state.meta.year;
+  document.getElementById('sidebar-year-text').textContent = state.meta.year;
   // Load fournisseurs
   const savedF = getData('meta.fournisseurs');
   if (savedF) state.fournisseurs = savedF;
@@ -1880,8 +1880,10 @@ function buildReleves() {
         <input type="file" id="releve-excel-${i+1}" accept=".xlsx,.xls,.csv" style="display:none"
           onchange="importExcelToReleve(this,${i+1})">
         <button class="btn-xs" onclick="document.getElementById('releve-excel-${i+1}').click()">📂 Fichier Excel</button>
-        <button class="btn-xs" onclick="addReleveRow(${i+1})">+ Ajouter élève</button>
-        <button class="btn-xs" onclick="resetReleveHeaders(${i+1})" style="margin-left:auto">↺ Réinitialiser en-têtes</button>
+        <button class="btn-xs" onclick="addReleveRow(${i+1})">+ Élève</button>
+        <button class="btn-xs" onclick="addReleveCol(${i+1})" style="background:#E0F2FE;color:#0369A1">+ Compétence</button>
+        <button class="btn-xs" onclick="removeReleveCol(${i+1})" style="background:#FEE2E2;color:#DC2626" title="Supprimer la dernière compétence">− Compétence</button>
+        <button class="btn-xs" onclick="resetReleveHeaders(${i+1})" style="margin-left:auto">↺ Réinitialiser</button>
       </div>
       <div class="releve-wrap">
         <table class="data-table releve-table" id="releve-table-${i+1}">
@@ -1894,7 +1896,12 @@ function buildReleves() {
   for (let i = 1; i <= 5; i++) initReleveTable(i);
 }
 
-const RELEVE_COLS = 10;
+const RELEVE_COLS_DEFAULT = 10;
+
+function getReleveColCount(ri) {
+  const headers = getData(`classe.releve${ri}.headers`);
+  return headers ? headers.length : RELEVE_COLS_DEFAULT;
+}
 
 function initReleveTable(ri) {
   buildReleveHeaders(ri);
@@ -1904,7 +1911,8 @@ function initReleveTable(ri) {
 function buildReleveHeaders(ri) {
   const head = document.getElementById(`releve-head-${ri}`);
   if (!head) return;
-  const saved = getData(`classe.releve${ri}.headers`) || Array.from({length:RELEVE_COLS},(_,i)=>`Compétence ${i+1}`);
+  const cols = getReleveColCount(ri);
+  const saved = getData(`classe.releve${ri}.headers`) || Array.from({length:cols},(_,i)=>`Compétence ${i+1}`);
   head.innerHTML = `<tr>
     <th style="min-width:150px;background:linear-gradient(135deg,#FBCFE8,white)">Élève</th>
     ${saved.map((h,i) => `
@@ -1917,25 +1925,69 @@ function buildReleveHeaders(ri) {
 }
 
 function saveReleveHeader(ri, ci, val) {
-  const saved = getData(`classe.releve${ri}.headers`) || Array.from({length:RELEVE_COLS},(_,i)=>`Compétence ${i+1}`);
+  const cols = getReleveColCount(ri);
+  const saved = getData(`classe.releve${ri}.headers`) || Array.from({length:cols},(_,i)=>`Compétence ${i+1}`);
   saved[ci] = val;
   setData(`classe.releve${ri}.headers`, saved); debounceSave();
 }
 
-function resetReleveHeaders(ri) {
-  setData(`classe.releve${ri}.headers`, Array.from({length:RELEVE_COLS},(_,i)=>`Compétence ${i+1}`));
+function addReleveCol(ri) {
+  const cols = getReleveColCount(ri);
+  const headers = getData(`classe.releve${ri}.headers`) || Array.from({length:cols},(_,i)=>`Compétence ${i+1}`);
+  headers.push(`Compétence ${headers.length+1}`);
+  setData(`classe.releve${ri}.headers`, headers);
+  // Ajouter une cellule vide à chaque ligne existante
+  const body = document.getElementById(`releve-body-${ri}`);
+  if (body) {
+    [...body.querySelectorAll('tr')].forEach((tr, rowIndex) => {
+      const delBtn = tr.querySelector('td.no-print');
+      const td = document.createElement('td');
+      td.innerHTML = `<input type="text" value="" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))">`;
+      tr.insertBefore(td, delBtn);
+    });
+  }
   buildReleveHeaders(ri);
+  debounceSave();
+}
+
+function removeReleveCol(ri) {
+  const cols = getReleveColCount(ri);
+  if (cols <= 1) { showToast('⚠️ Minimum 1 compétence'); return; }
+  if (!confirm('Supprimer la dernière compétence et ses données ?')) return;
+  const headers = getData(`classe.releve${ri}.headers`) || [];
+  headers.pop();
+  setData(`classe.releve${ri}.headers`, headers);
+  // Supprimer la dernière cellule de chaque ligne
+  const body = document.getElementById(`releve-body-${ri}`);
+  if (body) {
+    [...body.querySelectorAll('tr')].forEach(tr => {
+      const tds = tr.querySelectorAll('td:not(.no-print):not(.releve-name-cell)');
+      if (tds.length > 0) tds[tds.length-1].remove();
+    });
+  }
+  buildReleveHeaders(ri);
+  debounceSave();
+}
+
+function resetReleveHeaders(ri) {
+  const cols = RELEVE_COLS_DEFAULT;
+  setData(`classe.releve${ri}.headers`, Array.from({length:cols},(_,i)=>`Compétence ${i+1}`));
+  // Reconstruire complètement
+  const body = document.getElementById(`releve-body-${ri}`);
+  if (body) body.innerHTML = '';
+  initReleveTable(ri);
 }
 
 function addReleveRow(ri, nom='') {
   const body = document.getElementById(`releve-body-${ri}`);
   if (!body) return;
   const rowIndex = body.children.length;
-  const savedCells = getData(`classe.releve${ri}.rows.${rowIndex}`) || Array(RELEVE_COLS).fill('');
+  const cols = getReleveColCount(ri);
+  const savedCells = getData(`classe.releve${ri}.rows.${rowIndex}`) || Array(cols).fill('');
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="releve-name-cell"><input type="text" value="${nom}" placeholder="Nom Prénom…" style="width:100%;border:none;padding:6px 8px;font-weight:700;font-family:inherit;font-size:13px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))"></td>
-    ${Array.from({length:RELEVE_COLS},(_,ci) =>
+    ${Array.from({length:cols},(_,ci) =>
       `<td><input type="text" value="${savedCells[ci]||''}" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))"></td>`
     ).join('')}
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove()">×</button></td>
@@ -1946,7 +1998,7 @@ function addReleveRow(ri, nom='') {
 function saveReleveRow(ri, rowIndex, tr) {
   const inputs = tr.querySelectorAll('input');
   const vals = [...inputs].map(i => i.value);
-  setData(`classe.releve${ri}.rows.${rowIndex}`, vals.slice(1)); // skip name
+  setData(`classe.releve${ri}.rows.${rowIndex}`, vals.slice(1));
   setData(`classe.releve${ri}.names.${rowIndex}`, vals[0]);
   debounceSave();
 }
@@ -1965,6 +2017,7 @@ function loadReleveBody(ri) {
     cells.forEach((v,i) => { if(inputs[i]) inputs[i].value = v; });
   });
 }
+
 
 function importExcelToReleve(input, ri) {
   const file = input.files[0]; if (!file) return;
@@ -2827,7 +2880,7 @@ function applyImportedData(parsed) {
   if (parsed.canvas) { state.canvas = parsed.canvas; }
   document.getElementById('topbar-info').textContent = `${state.meta.school} — ${state.meta.year}`;
   document.getElementById('sidebar-school').textContent = state.meta.school;
-  document.getElementById('sidebar-year').textContent = state.meta.year;
+  document.getElementById('sidebar-year-text').textContent = state.meta.year;
   buildDynamicSections(); gotoSection(state.currentSection);
 }
 
@@ -2868,7 +2921,7 @@ function changeYear(){
     localStorage.setItem('cahier_meta',JSON.stringify(state.meta));
     loadAllData();
     document.getElementById('topbar-info').textContent=`${state.meta.school} — ${ny}`;
-    document.getElementById('sidebar-year').textContent=ny;
+    document.getElementById('sidebar-year-text').textContent=ny;
     buildDynamicSections();gotoSection(state.currentSection);
     showToast(`📅 Année ${ny} !`);
   }
@@ -3967,6 +4020,80 @@ function addIndicateurLigneFromData({ cat, indic }) {
 // ══════════════════════════════════════
 // PARAMÈTRES — modifier nom/école
 // ══════════════════════════════════════
+// ── Sélecteur d'année rapide ──
+function openYearPicker() {
+  const picker = document.getElementById('year-picker');
+  if (!picker) return;
+  const isOpen = picker.style.display !== 'none';
+  picker.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderYearPicker();
+}
+
+function renderYearPicker() {
+  const list = document.getElementById('year-picker-list');
+  if (!list) return;
+  const years = getAvailableYears();
+  list.innerHTML = years.map(y => `
+    <div onclick="switchYear('${y}')"
+      style="padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:${y===state.meta.year?'900':'600'};
+      background:${y===state.meta.year?'#FDE68A':'transparent'};color:#1E3A5F;margin-bottom:2px"
+      onmouseover="this.style.background='${y===state.meta.year?'#FDE68A':'#F8FAFF'}'"
+      onmouseout="this.style.background='${y===state.meta.year?'#FDE68A':'transparent'}'">
+      ${y=== state.meta.year ? '✓ ' : ''}${y}
+    </div>`).join('');
+}
+
+function getAvailableYears() {
+  // Toutes les années qui ont des données dans localStorage
+  const years = new Set();
+  years.add(state.meta.year || '2025-2026');
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    const m = key?.match(/^cahier_data_(\d{4}-\d{4})$/);
+    if (m) years.add(m[1]);
+  }
+  return [...years].sort();
+}
+
+function switchYear(year) {
+  if (year === state.meta.year) { document.getElementById('year-picker').style.display='none'; return; }
+  // Sauvegarder l'année courante
+  saveAll();
+  // Charger la nouvelle année
+  state.meta.year = year;
+  localStorage.setItem('cahier_meta', JSON.stringify(state.meta));
+  loadAllData();
+  document.getElementById('sidebar-year-text').textContent = year;
+  document.getElementById('topbar-info').textContent = `${state.meta.school} — ${year}`;
+  const settingsYear = document.getElementById('settings-year');
+  if (settingsYear) settingsYear.value = year;
+  document.getElementById('year-picker').style.display = 'none';
+  // Recharger l'interface
+  gotoSection(state.currentSection || 'dashboard');
+  showToast(`📅 Année ${year} chargée`);
+}
+
+function addNewYear() {
+  const cur = parseInt(state.meta.year?.split('-')[0]) || 2025;
+  const suggested = `${cur+1}-${cur+2}`;
+  const newYear = prompt('Nouvelle année scolaire :', suggested);
+  if (!newYear || !/^\d{4}-\d{4}$/.test(newYear.trim())) {
+    if (newYear !== null) showToast('⚠️ Format attendu : 2026-2027');
+    return;
+  }
+  document.getElementById('year-picker').style.display='none';
+  switchYear(newYear.trim());
+}
+
+// Fermer le sélecteur en cliquant ailleurs
+document.addEventListener('click', e => {
+  const picker = document.getElementById('year-picker');
+  const yearDiv = document.getElementById('sidebar-year');
+  if (picker && !picker.contains(e.target) && !yearDiv?.contains(e.target)) {
+    picker.style.display = 'none';
+  }
+});
+
 function openSettings() {
   const modal = document.getElementById('settings-modal');
   document.getElementById('settings-name').value   = state.meta.name   || '';

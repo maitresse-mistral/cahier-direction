@@ -54,7 +54,15 @@
   <div class="layout">
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-school" id="sidebar-school"></div>
-      <div class="sidebar-year" id="sidebar-year"></div>
+      <div class="sidebar-year" id="sidebar-year" onclick="openYearPicker()" title="Changer d'année" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <span id="sidebar-year-text"></span>
+        <span style="font-size:10px;opacity:0.6">▼</span>
+      </div>
+      <!-- Sélecteur d'année rapide -->
+      <div id="year-picker" style="display:none;background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.15);padding:8px;margin:4px 0;z-index:100">
+        <div id="year-picker-list"></div>
+        <button onclick="addNewYear()" style="width:100%;background:#F0FDF4;border:1px dashed #86EFAC;border-radius:8px;padding:6px;font-size:12px;font-weight:700;color:#16A34A;cursor:pointer;margin-top:4px">+ Nouvelle année</button>
+      </div>
       <hr class="sidebar-divider">
       <ul class="nav-sections">
         <li class="nav-item" data-section="dashboard" onclick="gotoSection('dashboard')"><span class="nav-dot" style="background:#C4B5FD"></span>Tableau de bord</li>
