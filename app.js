@@ -2805,7 +2805,7 @@ async function tryAutoReconnect() {
 }
 
 // ── Sauvegarde ──
-let oneDrivePermGranted = false; // verrou permission
+let oneDrivePermGranted = sessionStorage.getItem('od_perm') === '1';
 
 async function saveAll() {
   try {
@@ -2816,18 +2816,19 @@ async function saveAll() {
 
   if (fileHandle) {
     try {
-      // Vérifier la permission sans popup
       let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
-      if (perm !== 'granted' && !oneDrivePermGranted) {
-        // Demander UNE SEULE FOIS par session
+      if (perm === 'granted') {
+        oneDrivePermGranted = true;
+        sessionStorage.setItem('od_perm', '1');
+      } else if (!oneDrivePermGranted) {
         perm = await fileHandle.requestPermission({ mode: 'readwrite' });
         oneDrivePermGranted = (perm === 'granted');
+        if (oneDrivePermGranted) sessionStorage.setItem('od_perm', '1');
       }
-      if (perm !== 'granted') {
+      if (!oneDrivePermGranted) {
         showToast('💾 Sauvegardé localement (cliquez ☁️ pour autoriser OneDrive)');
         return;
       }
-      oneDrivePermGranted = true;
       const w = await fileHandle.createWritable();
       await w.write(getPayload());
       await w.close();
