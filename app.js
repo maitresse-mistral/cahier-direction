@@ -2194,7 +2194,7 @@ function buildAnnualCalendar() {
 
   const periodesHTML = periodesAuto.map(p => {
     const nb = nbSemaines(p.debut, p.fin);
-    const fmt = d => d ? new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+    const fmt = d => { if (!d) return '—'; const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; };
     return `
     <tr style="background:${p.color}33">
       <td style="font-weight:800;color:#1E3A5F;padding:8px 10px;white-space:nowrap">${p.label}</td>
