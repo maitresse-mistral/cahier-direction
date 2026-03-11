@@ -54,6 +54,19 @@ function startApp(fromStorage = false) {
 function buildDashboard() {
   const container = document.getElementById('dashboard-content');
   if (!container) return;
+  try {
+    _buildDashboardContent(container);
+  } catch(e) {
+    console.error('Dashboard error:', e);
+    container.innerHTML = `<div style="grid-column:1/-1;padding:20px;background:#FEE2E2;border-radius:12px;color:#991B1B">
+      <strong>⚠️ Erreur tableau de bord</strong><br><code style="font-size:11px">${e.message}</code><br>
+      <button onclick="_buildDashboardContent(document.getElementById('dashboard-content'))" 
+        style="margin-top:10px;padding:6px 12px;background:#EF4444;color:white;border:none;border-radius:8px;cursor:pointer">Réessayer</button>
+    </div>`;
+  }
+}
+
+function _buildDashboardContent(container) {
 
   const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
   const today = new Date();
@@ -231,7 +244,7 @@ function buildDashboard() {
     </div>`;
 
   container.innerHTML = header + widgetEffectifs + widgetTodo + widgetAgenda + widgetReunion;
-}
+} // fin _buildDashboardContent
 
 function getDaysUntil(dateStr) {
   const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
