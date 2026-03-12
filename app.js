@@ -3500,16 +3500,55 @@ function updateOneDriveStatus(linked, filename) {
   const dot = document.getElementById('onedrive-dot');
   const btn = document.getElementById('onedrive-btn');
   if (!dot) return;
+
+  // Supprimer le bandeau d'alerte existant si présent
+  const oldBanner = document.getElementById('onedrive-banner');
+  if (oldBanner) oldBanner.remove();
+
   if (linked === true) {
     dot.style.background = '#22C55E';
     dot.title = `☁️ OneDrive lié : ${filename || ''}`;
-    if (btn) btn.title = `OneDrive lié — cliquer pour gérer`;
+    if (btn) {
+      btn.title = `OneDrive lié — cliquer pour gérer`;
+      btn.onclick = () => openOdSetup();
+    }
   } else if (linked === 'pending') {
     dot.style.background = '#FCD34D';
-    dot.title = '☁️ OneDrive : cliquer 💾 pour relancer';
+    dot.title = '⚠️ Cliquer pour reconnecter OneDrive';
+    if (btn) {
+      btn.title = '⚠️ Permission OneDrive expirée — cliquer pour reconnecter';
+      btn.onclick = () => reconnectOneDrive();
+    }
+    // Bandeau d'alerte visible
+    const banner = document.createElement('div');
+    banner.id = 'onedrive-banner';
+    banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:8000;background:#FEF9C3;border:2px solid #FCD34D;border-radius:12px;padding:10px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);cursor:pointer;font-size:13px;font-weight:700;color:#92400E';
+    banner.innerHTML = `☁️ OneDrive non synchronisé — <u>Cliquer ici pour reconnecter</u> <span style="margin-left:8px;opacity:.6;font-weight:400;font-size:11px">×</span>`;
+    banner.onclick = () => { reconnectOneDrive(); banner.remove(); };
+    document.body.appendChild(banner);
+    // Disparaît après 10s
+    setTimeout(() => banner.remove(), 10000);
   } else {
     dot.style.background = '#CBD5E1';
     dot.title = 'OneDrive non lié — cliquer ☁️ pour lier';
+    if (btn) btn.onclick = () => openOdSetup();
+  }
+}
+
+async function reconnectOneDrive() {
+  if (!fileHandle) { openOdSetup(); return; }
+  try {
+    showToast('☁️ Reconnexion OneDrive…');
+    const perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      updateOneDriveStatus(true, fileHandle.name);
+      await saveAll();
+      showToast('✅ OneDrive reconnecté et synchronisé !', 3000);
+    } else {
+      showToast('⚠️ Permission refusée — réessayez', 4000);
+    }
+  } catch(e) {
+    showToast('⚠️ Impossible de reconnecter OneDrive');
   }
 }
 
