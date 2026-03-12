@@ -339,7 +339,7 @@ function gotoSection(key) {
   if (key === 'calend') showCalend('annuel');
     if (key === 'todo')   showTodo('rentree');
     if (key === 'reunions') showReunionCat('maitres');
-    if (key === 'gen') { populateMaClasseSelect(); loadLogoPreview(); }
+    if (key === 'gen') { populateMaClasseSelect(); loadLogoPreview(); buildEnseignantsTable(); }
   }, 50);
 }
 
@@ -874,11 +874,16 @@ function showEffectifsClass(i) {
 
 function renameEffectifsClass(i, newName) {
   const names = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const oldName = names[i];
   names[i] = newName;
   setData('admin.effectifs.classnames', names);
-  // Update tab label
+  // Mettre à jour le tab label
   const tabs = document.querySelectorAll('#effectifs-class-tabs .class-tab');
   if (tabs[i]) tabs[i].textContent = newName;
+  // Mettre à jour les selects enseignants si ouverts
+  document.querySelectorAll('#enseignants-tbody select').forEach(sel => {
+    [...sel.options].forEach(opt => { if (opt.value === oldName) opt.value = opt.text = newName; });
+  });
   debounceSave();
 }
 
@@ -1634,6 +1639,79 @@ function loadLogoPreview() {
   if (!preview) return;
   const logo = getData('gen.logo');
   if (logo) preview.innerHTML = `<img src="${logo}" style="width:100%;height:100%;object-fit:contain">`;
+}
+
+function buildEnseignantsTable() {
+  const wrap = document.getElementById('enseignants-table-wrap');
+  if (!wrap) return;
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const saved = getData('gen.enseignants') || [];
+
+  // S'assurer qu'on a une ligne par classe + une ligne direction + lignes libres
+  // Structure : [{classe, nom, tel, email, notes}]
+  // Pré-remplir avec les classes existantes si pas encore de données
+  let rows = saved.length > 0 ? saved : classNames.map(c => ({ classe: c, nom:'', tel:'', email:'', notes:'' }));
+
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table" id="enseignants-table">
+        <thead><tr style="background:#FDE68A">
+          <th style="min-width:110px">Classe</th>
+          <th style="min-width:180px">Nom &amp; Prénom</th>
+          <th style="min-width:130px">Téléphone</th>
+          <th style="min-width:200px">Email</th>
+          <th style="min-width:120px">Notes</th>
+          <th class="no-print" style="width:36px"></th>
+        </tr></thead>
+        <tbody id="enseignants-tbody">
+          ${rows.map((r,i) => enseignantRowHTML(r, i, classNames)).join('')}
+        </tbody>
+      </table>
+    </div>
+    <button onclick="addEnseignantRow()" style="margin-top:8px;background:#FDE68A;border:none;border-radius:10px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;color:#1E3A5F">+ Ajouter un enseignant</button>`;
+}
+
+function enseignantRowHTML(r, i, classNames) {
+  const opts = ['Direction','—', ...( classNames || getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'])]
+    .map(c => `<option value="${c}" ${r.classe===c?'selected':''}>${c}</option>`).join('');
+  return `<tr>
+    <td><select onchange="saveEnseignants()" style="border:none;font-size:12px;font-weight:700;width:100%;padding:4px">
+      ${opts}
+    </select></td>
+    <td><input type="text" value="${r.nom||''}" placeholder="Nom Prénom…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:13px"></td>
+    <td><input type="text" value="${r.tel||''}" placeholder="06…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
+    <td><input type="email" value="${r.email||''}" placeholder="prenom.nom@ac-…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
+    <td><input type="text" value="${r.notes||''}" placeholder="Notes…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
+    <td class="no-print"><button onclick="this.closest('tr').remove();saveEnseignants()" style="background:none;border:none;color:#FCA5A5;cursor:pointer;font-size:16px">×</button></td>
+  </tr>`;
+}
+
+function addEnseignantRow() {
+  const tbody = document.getElementById('enseignants-tbody');
+  if (!tbody) return;
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const i = tbody.querySelectorAll('tr').length;
+  tbody.insertAdjacentHTML('beforeend', enseignantRowHTML({classe:'—',nom:'',tel:'',email:'',notes:''}, i, classNames));
+}
+
+function saveEnseignants() {
+  const tbody = document.getElementById('enseignants-tbody');
+  if (!tbody) return;
+  const rows = [...tbody.querySelectorAll('tr')].map(tr => {
+    const cells = tr.querySelectorAll('td');
+    return {
+      classe: cells[0]?.querySelector('select')?.value || '',
+      nom:    cells[1]?.querySelector('input')?.value  || '',
+      tel:    cells[2]?.querySelector('input')?.value  || '',
+      email:  cells[3]?.querySelector('input')?.value  || '',
+      notes:  cells[4]?.querySelector('input')?.value  || '',
+    };
+  });
+  setData('gen.enseignants', rows);
+  debounceSave();
+  // Mettre à jour aussi gen.identites pour les listes déroulantes
+  const identites = rows.filter(r => r.nom.trim()).map(r => [r.nom, r.classe, r.tel, r.email, '', r.notes]);
+  setData('gen.identites', identites);
 }
 
 function uploadLogo() {
