@@ -105,7 +105,6 @@
           <h2>01 — Généralités</h2>
           <div class="subtabs">
             <button class="subtab active" onclick="showTab('gen','infos')">Infos</button>
-            <button class="subtab" onclick="showTab('gen','identites')">Identités</button>
             <button class="subtab" onclick="showTab('gen','contacts')">Contacts</button>
             <button class="subtab" onclick="showTab('gen','intervenants')">Intervenants</button>
             <button class="subtab" onclick="showTab('gen','sorties')">Sorties</button>
@@ -125,18 +124,33 @@
             <div class="field-group"><label>IEN</label><input type="text" data-key="gen.infos.ien"></div>
             <div class="field-group"><label>Nb de classes</label><input type="number" data-key="gen.infos.nbclasses"></div>
             <div class="field-group"><label>Nb d'élèves</label><input type="number" data-key="gen.infos.nbeleves"></div>
+            <div class="field-group"><label>🏫 Ma classe</label>
+              <select data-key="gen.infos.maclasse" id="select-maclasse">
+                <option value="">— Choisir —</option>
+              </select>
+            </div>
           </div>
           <div class="canvas-zone" data-canvas="gen-infos-notes"><div class="canvas-label">✏️ Notes manuscrites</div><canvas class="drawing-canvas"></canvas></div>
-        </div>
-        <div class="tab-content hidden" id="gen-identites">
-          <h3>Personnel de l'école</h3>
-          <div class="repertoire-banner">
-            <span>📒 Ce tableau sert de répertoire — les noms saisis ici seront disponibles comme liste déroulante dans les autres sections (EBP, AESH…)</span>
+
+          <!-- Personnel et logo -->
+          <h3 style="margin-top:24px">👥 Personnel de l'école</h3>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+              <div id="logo-preview" onclick="uploadLogo()" style="width:90px;height:90px;border-radius:14px;border:2px dashed #C4B5FD;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:#FAF5FF;font-size:11px;color:#8B5CF6;text-align:center;gap:4px;overflow:hidden">
+                <span style="font-size:28px">🏫</span><span>Logo école</span>
+              </div>
+              <button onclick="uploadLogo()" style="font-size:11px;background:#EDE9FE;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;color:#7C3AED">📷 Changer</button>
+            </div>
+            <div style="flex:1;min-width:280px">
+              <div class="repertoire-banner" style="margin-bottom:8px">
+                <span>📒 Ce tableau apparaît dans le tableau de bord — les noms sont aussi disponibles comme liste déroulante dans les autres sections</span>
+              </div>
+              <div class="table-wrap"><table class="data-table editable-table" data-key="gen.identites"><thead><tr>
+                <th>Nom &amp; Prénom</th><th>Poste</th><th>Téléphone</th><th>Email</th><th>Contrat</th><th>Notes</th>
+                <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
+              </tr></thead><tbody></tbody></table></div>
+            </div>
           </div>
-          <div class="table-wrap"><table class="data-table editable-table" data-key="gen.identites"><thead><tr>
-            <th>Nom &amp; Prénom</th><th>Poste</th><th>Téléphone</th><th>Email</th><th>Contrat</th><th>Notes</th>
-            <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
-          </tr></thead><tbody></tbody></table></div>
         </div>
         <div class="tab-content hidden" id="gen-contacts">
           <h3>Contacts clés</h3>
@@ -401,9 +415,8 @@
         <div class="tab-content hidden" id="classe-anniv">
           <h3>Anniversaires — Calendrier de l'année scolaire</h3>
           <div class="import-bar" style="flex-wrap:wrap;gap:8px">
-            <span class="label-sm">🎂 Synchroniser depuis :</span>
-            <div id="anniv-sync-classes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-            <button class="btn-xs" onclick="syncAnnivFromEffectifs()" style="background:#FDF2F8;color:#DB2777;border-color:#FBCFE8">✅ Synchroniser</button>
+            <span class="label-sm">🎂 Importer depuis mes effectifs :</span>
+            <button class="btn-xs" onclick="syncAnnivFromEffectifs()" style="background:#FDF2F8;color:#DB2777;border-color:#FBCFE8">✅ Synchroniser ma classe</button>
           </div>
           <div id="anniv-calendar"></div>
         </div>

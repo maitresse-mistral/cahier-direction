@@ -236,15 +236,51 @@ function _buildDashboardContent(container) {
     </div>`;
 
   // ── En-tête du tableau de bord ──
+  const personnel = getData('gen.identites') || [];
+  const logoData  = getData('gen.logo') || '';
+
+  const personnelHTML = personnel.filter(p => p[0]?.trim()).slice(0, 6).map(p => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.15);margin-bottom:4px">
+      <span style="font-size:15px">${p[1]?.toLowerCase().includes('direct') ? '👩‍💼' : p[1]?.toLowerCase().includes('aesh') ? '🤝' : p[1]?.toLowerCase().includes('atsem') ? '🌟' : '👩‍🏫'}</span>
+      <span style="font-size:12px;font-weight:700;flex:1;color:white">${p[0]}</span>
+      <span style="font-size:11px;opacity:.8;color:white">${p[1]||''}</span>
+    </div>`).join('');
+
+  const logoHTML = logoData
+    ? `<img src="${logoData}" style="width:72px;height:72px;border-radius:12px;object-fit:contain;background:white;padding:4px">`
+    : `<div onclick="uploadLogo()" style="width:72px;height:72px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:white;text-align:center;gap:4px">
+        <span style="font-size:24px">🏫</span><span>Logo</span>
+      </div>`;
+
   const header = `
-    <div style="grid-column:1/-1;background:linear-gradient(135deg,#C4B5FD,#8B5CF6);border-radius:16px;padding:20px 24px;color:white;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div style="font-size:22px;font-weight:900;font-family:'Nunito',sans-serif">Bonjour ${state.meta.name ? state.meta.name.split(' ').pop() : ''} 👋</div>
-        <div style="font-size:13px;opacity:.85;margin-top:2px;text-transform:capitalize">${todayStr}</div>
+    <div style="grid-column:1/-1;background:linear-gradient(135deg,#C4B5FD,#8B5CF6);border-radius:16px;padding:20px 24px;color:white;display:flex;gap:20px;flex-wrap:wrap;align-items:stretch">
+      <!-- Gauche : logo + infos école -->
+      <div style="display:flex;gap:16px;align-items:center;flex:1;min-width:220px">
+        <div style="cursor:pointer;flex-shrink:0" onclick="uploadLogo()" title="Cliquer pour changer le logo">
+          ${logoHTML}
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:900;font-family:'Nunito',sans-serif">${getData('gen.infos.nom') || state.meta.school || 'Mon École'}</div>
+          <div style="font-size:12px;opacity:.85">${getData('gen.infos.adresse')||''} ${getData('gen.infos.cp')||''}</div>
+          <div style="font-size:12px;opacity:.85;margin-top:2px">📞 ${getData('gen.infos.tel')||'—'}</div>
+          <div style="font-size:12px;opacity:.85;margin-top:6px;text-transform:capitalize">${todayStr}</div>
+        </div>
       </div>
-      <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:10px 16px;text-align:center">
-        <div style="font-size:24px;font-weight:900">${totalEleves}</div>
-        <div style="font-size:11px;opacity:.85">élèves</div>
+      <!-- Milieu : personnel -->
+      ${personnelHTML ? `<div style="flex:1;min-width:220px">
+        <div style="font-size:11px;font-weight:800;opacity:.7;margin-bottom:6px;letter-spacing:.05em">ÉQUIPE</div>
+        ${personnelHTML}
+        <div style="font-size:10px;opacity:.6;margin-top:4px;cursor:pointer" onclick="gotoSection('gen')">✏️ Modifier dans Généralités</div>
+      </div>` : `<div style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:center">
+        <div style="font-size:12px;opacity:.6;cursor:pointer;text-align:center" onclick="gotoSection('gen')">✏️ Ajoutez votre équipe<br>dans Généralités → Infos</div>
+      </div>`}
+      <!-- Droite : total élèves + bonjour -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+        <div style="font-size:20px;font-weight:900">Bonjour ${state.meta.name ? state.meta.name.split(' ').pop() : ''} 👋</div>
+        <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:10px 20px;text-align:center">
+          <div style="font-size:28px;font-weight:900">${totalEleves}</div>
+          <div style="font-size:11px;opacity:.85">élèves</div>
+        </div>
       </div>
     </div>`;
 
@@ -303,6 +339,7 @@ function gotoSection(key) {
   if (key === 'calend') showCalend('annuel');
     if (key === 'todo')   showTodo('rentree');
     if (key === 'reunions') showReunionCat('maitres');
+    if (key === 'gen') { populateMaClasseSelect(); loadLogoPreview(); }
   }, 50);
 }
 
@@ -1530,16 +1567,6 @@ function buildAnnivCalendar(force=false) {
   const container = document.getElementById('anniv-calendar');
   if (!container || (container.innerHTML.trim() && !force)) return;
 
-  const classDiv = document.getElementById('anniv-sync-classes');
-  if (classDiv && !classDiv.innerHTML.trim()) {
-    const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
-    classDiv.innerHTML = classNames.map((nom, i) =>
-      `<label style="display:flex;align-items:center;gap:4px;background:${ANNIV_CLASS_COLORS[i]}44;border:1.5px solid ${ANNIV_CLASS_COLORS[i]};border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;color:#1E3A5F">
-        <input type="checkbox" value="${i}" checked style="accent-color:#DB2777"> ${nom}
-      </label>`
-    ).join('');
-  }
-
   const schoolYear = parseInt(state.meta.year.split('-')[0]) || 2025;
   const monthList = [8,9,10,11,0,1,2,3,4,5,6];
   container.innerHTML = `<div class="anniv-months">` + monthList.map(m => {
@@ -1602,15 +1629,51 @@ function saveAnniv(m) {
   setData(`classe.anniv.${m}`, entries); debounceSave();
 }
 
+function loadLogoPreview() {
+  const preview = document.getElementById('logo-preview');
+  if (!preview) return;
+  const logo = getData('gen.logo');
+  if (logo) preview.innerHTML = `<img src="${logo}" style="width:100%;height:100%;object-fit:contain">`;
+}
+
+function uploadLogo() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      setData('gen.logo', ev.target.result);
+      debounceSave();
+      if (state.currentSection === 'dashboard') buildDashboard();
+      showToast('🏫 Logo mis à jour !');
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function populateMaClasseSelect() {
+  const sel = document.getElementById('select-maclasse');
+  if (!sel) return;
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const current = getData('gen.infos.maclasse') || '';
+  sel.innerHTML = `<option value="">— Choisir —</option>` +
+    classNames.map((nom, i) =>
+      `<option value="${i}" ${current == i ? 'selected' : ''}>${nom}</option>`
+    ).join('');
+}
+
 function syncAnnivFromEffectifs() {
   const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const maClasseVal = getData('gen.infos.maclasse');
+  if (maClasseVal === '' || maClasseVal === null || maClasseVal === undefined) {
+    showToast('⚠️ Indiquez votre classe dans Généralités → Infos école');
+    return;
+  }
+  const ci = parseInt(maClasseVal);
+  const className = classNames[ci] || `Classe ${ci+1}`;
 
-  // Récupérer les classes cochées
-  const checkedCi = [...document.querySelectorAll('#anniv-sync-classes input[type=checkbox]:checked')]
-    .map(cb => parseInt(cb.value));
-  if (checkedCi.length === 0) { showToast('⚠️ Sélectionnez au moins une classe.'); return; }
-
-  // Index de ce qui existe déjà
   const existing = {};
   for (let m = 0; m <= 11; m++) {
     (getData(`classe.anniv.${m}`) || []).forEach(e => {
@@ -1621,47 +1684,38 @@ function syncAnnivFromEffectifs() {
   const toAdd = {};
   let added = 0;
 
-  checkedCi.forEach(ci => {
-    const eleves = getData(`admin.effectifs.c${ci}`) || [];
-    eleves.forEach(e => {
-      if (!e.nom?.trim() || !e.ddn) return;
-      // Accepter jj/mm/aaaa ET aaaa-mm-jj
-      let month, day;
-      if (e.ddn.includes('/')) {
-        const parts = e.ddn.split('/');
-        if (parts.length < 3) return;
-        day   = parseInt(parts[0]);
-        month = parseInt(parts[1]) - 1;
-      } else {
-        const parts = e.ddn.split('-');
-        if (parts.length < 3) return;
-        month = parseInt(parts[1]) - 1;
-        day   = parseInt(parts[2]);
-      }
-      if (isNaN(month) || isNaN(day)) return;
-
-      const label = `${e.nom.trim()} (${classNames[ci]})`;
-      if (existing[label.toLowerCase()]) return;
-
-      if (!toAdd[month]) toAdd[month] = [];
-      toAdd[month].push({ day, name: label, ci });
-      existing[label.toLowerCase()] = true;
-      added++;
-    });
+  const eleves = getData(`admin.effectifs.c${ci}`) || [];
+  eleves.forEach(e => {
+    if (!e.nom?.trim() || !e.ddn) return;
+    let month, day;
+    if (e.ddn.includes('/')) {
+      const parts = e.ddn.split('/');
+      if (parts.length < 3) return;
+      day = parseInt(parts[0]); month = parseInt(parts[1]) - 1;
+    } else {
+      const parts = e.ddn.split('-');
+      if (parts.length < 3) return;
+      month = parseInt(parts[1]) - 1; day = parseInt(parts[2]);
+    }
+    if (isNaN(month) || isNaN(day)) return;
+    const label = `${e.nom.trim()} (${className})`;
+    if (existing[label.toLowerCase()]) return;
+    if (!toAdd[month]) toAdd[month] = [];
+    toAdd[month].push({ day, name: label, ci });
+    existing[label.toLowerCase()] = true;
+    added++;
   });
 
   if (added === 0) { showToast('✅ Anniversaires déjà à jour — rien de nouveau.'); return; }
-
   for (const [m, entries] of Object.entries(toAdd)) {
     const saved = getData(`classe.anniv.${m}`) || [];
     const merged = [...saved, ...entries].sort((a, b) => (parseInt(a.day)||0) - (parseInt(b.day)||0));
     setData(`classe.anniv.${m}`, merged);
   }
   debounceSave();
-
   const container = document.getElementById('anniv-calendar');
   if (container) { container.innerHTML = ''; buildAnnivCalendar(true); }
-  showToast(`🎂 ${added} anniversaire(s) ajouté(s) !`);
+  showToast(`🎂 ${added} anniversaire(s) de ${className} ajouté(s) !`);
 }
 
 
