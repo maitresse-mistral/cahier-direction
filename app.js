@@ -239,12 +239,17 @@ function _buildDashboardContent(container) {
   const personnel = getData('gen.identites') || [];
   const logoData  = getData('gen.logo') || '';
 
-  const personnelHTML = personnel.filter(p => p[0]?.trim()).slice(0, 6).map(p => `
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.15);margin-bottom:4px">
-      <span style="font-size:15px">${p[1]?.toLowerCase().includes('direct') ? '👩‍💼' : p[1]?.toLowerCase().includes('aesh') ? '🤝' : p[1]?.toLowerCase().includes('atsem') ? '🌟' : '👩‍🏫'}</span>
-      <span style="font-size:12px;font-weight:700;flex:1;color:white">${p[0]}</span>
-      <span style="font-size:11px;opacity:.8;color:white">${p[1]||''}</span>
-    </div>`).join('');
+  const personnelHTML = personnel.filter(p => p[0]?.trim()).slice(0, 8).map(p => {
+    const isMgmt = p[1]?.includes('Direct') || p[1]?.includes('Intérim');
+    const isInterim = p[1]?.includes('Intérim');
+    const bg = isInterim ? 'rgba(253,230,138,.4)' : isMgmt ? 'rgba(196,181,253,.4)' : 'rgba(255,255,255,.15)';
+    const icon = isInterim ? '🔄' : p[1]?.includes('Direct') ? '⭐' : p[1]?.toLowerCase().includes('aesh') ? '🤝' : '👩‍🏫';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;background:${bg};margin-bottom:4px">
+      <span style="font-size:14px">${icon}</span>
+      <span style="font-size:12px;font-weight:${isMgmt?'900':'700'};flex:1;color:white">${p[0]}</span>
+      <span style="font-size:10px;opacity:.85;color:white;font-style:italic">${p[1]||''}</span>
+    </div>`;
+  }).join('');
 
   const logoHTML = logoData
     ? `<img src="${logoData}" style="width:72px;height:72px;border-radius:12px;object-fit:contain;background:white;padding:4px">`
@@ -1656,11 +1661,12 @@ function buildEnseignantsTable() {
     <div class="table-wrap">
       <table class="data-table" id="enseignants-table">
         <thead><tr style="background:#FDE68A">
-          <th style="min-width:110px">Classe</th>
+          <th style="min-width:90px">Classe</th>
           <th style="min-width:180px">Nom &amp; Prénom</th>
-          <th style="min-width:130px">Téléphone</th>
-          <th style="min-width:200px">Email</th>
-          <th style="min-width:120px">Notes</th>
+          <th style="min-width:150px">Rôle</th>
+          <th style="min-width:120px">Téléphone</th>
+          <th style="min-width:180px">Email</th>
+          <th style="min-width:100px">Notes</th>
           <th class="no-print" style="width:36px"></th>
         </tr></thead>
         <tbody id="enseignants-tbody">
@@ -1672,13 +1678,20 @@ function buildEnseignantsTable() {
 }
 
 function enseignantRowHTML(r, i, classNames) {
-  const opts = ['Direction','—', ...( classNames || getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'])]
+  const opts = ['—', ...( classNames || getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'])]
     .map(c => `<option value="${c}" ${r.classe===c?'selected':''}>${c}</option>`).join('');
-  return `<tr>
+  const roleOpts = ['—','Directrice','Directeur','Directrice adjointe','Directeur adjoint','Intérim direction','Enseignant(e)']
+    .map(ro => `<option value="${ro}" ${(r.role||'—')===ro?'selected':''}>${ro}</option>`).join('');
+  const isMgmt = r.role && (r.role.includes('Direct') || r.role.includes('Intérim'));
+  const rowBg  = r.role?.includes('Intérim') ? 'background:#FEF9C3' : isMgmt ? 'background:#EDE9FE' : '';
+  return `<tr style="${rowBg}">
     <td><select onchange="saveEnseignants()" style="border:none;font-size:12px;font-weight:700;width:100%;padding:4px">
       ${opts}
     </select></td>
-    <td><input type="text" value="${r.nom||''}" placeholder="Nom Prénom…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:13px"></td>
+    <td><input type="text" value="${r.nom||''}" placeholder="Nom Prénom…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:13px;font-weight:${isMgmt?'900':'400'}"></td>
+    <td><select onchange="saveEnseignants()" style="border:none;font-size:11px;width:100%;padding:4px;color:${r.role?.includes('Intérim')?'#92400E':isMgmt?'#6D28D9':'#64748B'}">
+      ${roleOpts}
+    </select></td>
     <td><input type="text" value="${r.tel||''}" placeholder="06…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
     <td><input type="email" value="${r.email||''}" placeholder="prenom.nom@ac-…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
     <td><input type="text" value="${r.notes||''}" placeholder="Notes…" onchange="saveEnseignants()" style="border:none;width:100%;padding:4px 6px;font-size:12px"></td>
@@ -1702,15 +1715,16 @@ function saveEnseignants() {
     return {
       classe: cells[0]?.querySelector('select')?.value || '',
       nom:    cells[1]?.querySelector('input')?.value  || '',
-      tel:    cells[2]?.querySelector('input')?.value  || '',
-      email:  cells[3]?.querySelector('input')?.value  || '',
-      notes:  cells[4]?.querySelector('input')?.value  || '',
+      role:   cells[2]?.querySelector('select')?.value || '—',
+      tel:    cells[3]?.querySelector('input')?.value  || '',
+      email:  cells[4]?.querySelector('input')?.value  || '',
+      notes:  cells[5]?.querySelector('input')?.value  || '',
     };
   });
   setData('gen.enseignants', rows);
   debounceSave();
-  // Mettre à jour aussi gen.identites pour les listes déroulantes
-  const identites = rows.filter(r => r.nom.trim()).map(r => [r.nom, r.classe, r.tel, r.email, '', r.notes]);
+  // Mettre à jour gen.identites pour les listes déroulantes
+  const identites = rows.filter(r => r.nom.trim()).map(r => [r.nom, r.role !== '—' ? r.role : r.classe, r.tel, r.email, '', r.notes]);
   setData('gen.identites', identites);
 }
 
