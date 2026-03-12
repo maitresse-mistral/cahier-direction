@@ -130,28 +130,20 @@
               </select>
             </div>
           </div>
-          <!-- Enseignants de l'école -->
-          <h3 style="margin-top:24px">👩‍🏫 Enseignants de l'école</h3>
-          <div style="margin-bottom:8px;font-size:12px;color:#94A3B8">Les noms de classes sont modifiables dans <strong>Administration → Effectifs</strong> et se répercutent partout.</div>
-          <div id="enseignants-table-wrap"></div>
-
-          <!-- Personnel et logo -->
-          <h3 style="margin-top:24px">👥 Personnel de l'école</h3>
-          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+          <!-- Personnel de l'école -->
+          <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-top:24px">
+            <!-- Logo -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
               <div id="logo-preview" onclick="uploadLogo()" style="width:90px;height:90px;border-radius:14px;border:2px dashed #C4B5FD;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:#FAF5FF;font-size:11px;color:#8B5CF6;text-align:center;gap:4px;overflow:hidden">
                 <span style="font-size:28px">🏫</span><span>Logo école</span>
               </div>
               <button onclick="uploadLogo()" style="font-size:11px;background:#EDE9FE;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;color:#7C3AED">📷 Changer</button>
             </div>
-            <div style="flex:1;min-width:280px">
-              <div class="repertoire-banner" style="margin-bottom:8px">
-                <span>📒 Ce tableau apparaît dans le tableau de bord — les noms sont aussi disponibles comme liste déroulante dans les autres sections</span>
-              </div>
-              <div class="table-wrap"><table class="data-table editable-table" data-key="gen.identites"><thead><tr>
-                <th>Nom &amp; Prénom</th><th>Poste</th><th>Téléphone</th><th>Email</th><th>Contrat</th><th>Notes</th>
-                <th class="no-print"><button class="add-row-btn" onclick="addRow(this)">+</button></th>
-              </tr></thead><tbody></tbody></table></div>
+            <!-- Tableau personnel -->
+            <div style="flex:1;min-width:300px">
+              <h3 style="margin:0 0 6px">👥 Personnel de l'école</h3>
+              <div style="margin-bottom:8px;font-size:12px;color:#94A3B8">Enseignants, direction, ATSEM, AESH… — apparaît dans le tableau de bord. Les noms de classes se modifient dans <strong>Administration → Effectifs</strong>.</div>
+              <div id="enseignants-table-wrap"></div>
             </div>
           </div>
         </div>
@@ -222,15 +214,15 @@
         <div class="section-header" style="--c:#93C5FD">
           <h2>02 — Administration</h2>
           <div class="subtabs">
-            <button class="subtab active" onclick="showTab('admin','commandes')">Commandes</button>
-            <button class="subtab" onclick="showTab('admin','effectifs')">Effectifs</button>
+            <button class="subtab active" onclick="showTab('admin','effectifs')">Effectifs</button>
+            <button class="subtab" onclick="showTab('admin','commandes')">Commandes</button>
             <button class="subtab" onclick="showTab('admin','docs')">Docs</button>
             <button class="subtab" onclick="showTab('admin','indicateurs')">📊 Indicateurs</button>
           </div>
         </div>
 
         <!-- COMMANDES par classe avec budget -->
-        <div class="tab-content active" id="admin-commandes">
+        <div class="tab-content hidden" id="admin-commandes">
           <div class="section-toolbar">
             <h3>Commandes par classe</h3>
             <div class="fournisseurs-bar">
@@ -251,7 +243,7 @@
         </div>
 
         <!-- EFFECTIFS : 5 classes avec noms modifiables + import Excel -->
-        <div class="tab-content hidden" id="admin-effectifs">
+        <div class="tab-content active" id="admin-effectifs">
           <h3>Classes et effectifs</h3>
           <div class="class-tabs" id="effectifs-class-tabs"></div>
           <div id="effectifs-class-content"></div>
