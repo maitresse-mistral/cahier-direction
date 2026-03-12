@@ -3011,19 +3011,28 @@ function _renderReunionPJ(catKey, n) {
   const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
   if (pjs.length === 0) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = pjs.map((pj, i) => {
-    const icon = pj.type?.includes('pdf') ? '📄' :
-                 pj.type?.includes('image') ? '🖼️' :
+    const isImg = pj.type?.includes('image');
+    const isPdf = pj.type?.includes('pdf');
+    const isTxt = pj.type?.includes('text') || pj.name?.endsWith('.txt');
+    const canPreview = isImg || isPdf || isTxt;
+    const icon = isPdf ? '📄' : isImg ? '🖼️' :
                  pj.type?.includes('word') || pj.name?.endsWith('.doc') || pj.name?.endsWith('.docx') ? '📝' :
                  pj.type?.includes('sheet') || pj.name?.endsWith('.xls') || pj.name?.endsWith('.xlsx') ? '📊' :
                  pj.type?.includes('presentation') || pj.name?.endsWith('.ppt') ? '📊' : '📎';
     const kb = pj.size ? `${Math.round(pj.size/1024)} Ko` : '';
-    return `<div style="display:flex;align-items:center;gap:6px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:6px 10px;max-width:220px">
-      <span style="font-size:18px">${icon}</span>
+    // Miniature pour les images
+    const thumb = isImg
+      ? `<img src="${pj.data}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer" onclick="previewReunionPJ('${catKey}',${n},${i})">`
+      : `<span style="font-size:24px;flex-shrink:0">${icon}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:8px 10px;max-width:260px">
+      ${thumb}
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-weight:700;color:#1E3A5F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pj.name}</div>
+        <div style="font-size:11px;font-weight:700;color:#1E3A5F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${pj.name}">${pj.name}</div>
         <div style="font-size:10px;color:#94A3B8">${kb}</div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        ${canPreview ? `<button onclick="previewReunionPJ('${catKey}',${n},${i})" title="Aperçu"
+          style="background:#DBEAFE;border:none;border-radius:6px;cursor:pointer;font-size:12px;padding:3px 6px">👁️</button>` : ''}
         <button onclick="downloadReunionPJ('${catKey}',${n},${i})" title="Télécharger"
           style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px">⬇️</button>
         <button onclick="deleteReunionPJ('${catKey}',${n},${i})" title="Supprimer"
@@ -3031,6 +3040,57 @@ function _renderReunionPJ(catKey, n) {
       </div>
     </div>`;
   }).join('');
+}
+
+function previewReunionPJ(catKey, n, i) {
+  const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
+  const pj = pjs[i]; if (!pj) return;
+
+  // Créer ou réutiliser la modale
+  let modal = document.getElementById('pj-preview-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'pj-preview-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = e => { if (e.target === modal) closePreviewModal(); };
+    document.body.appendChild(modal);
+  }
+
+  const isImg = pj.type?.includes('image');
+  const isPdf = pj.type?.includes('pdf');
+  const isTxt = pj.type?.includes('text') || pj.name?.endsWith('.txt');
+
+  let contentHTML = '';
+  if (isImg) {
+    contentHTML = `<img src="${pj.data}" style="max-width:100%;max-height:75vh;border-radius:8px;object-fit:contain">`;
+  } else if (isPdf) {
+    contentHTML = `<iframe src="${pj.data}" style="width:80vw;height:75vh;border:none;border-radius:8px;background:white"></iframe>`;
+  } else if (isTxt) {
+    // Décoder le base64 pour afficher le texte
+    const raw = atob(pj.data.split(',')[1] || '');
+    const escaped = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    contentHTML = `<pre style="background:white;border-radius:8px;padding:20px;max-width:80vw;max-height:75vh;overflow:auto;font-size:13px;line-height:1.6;white-space:pre-wrap">${escaped}</pre>`;
+  }
+
+  modal.innerHTML = `
+    <div style="background:#1E3A5F;border-radius:12px 12px 0 0;padding:12px 20px;width:100%;max-width:85vw;display:flex;align-items:center;justify-content:space-between">
+      <span style="color:white;font-weight:700;font-size:14px">📎 ${pj.name}</span>
+      <div style="display:flex;gap:8px">
+        <button onclick="downloadReunionPJ('${catKey}',${n},${i})"
+          style="background:#3B82F6;border:none;border-radius:8px;padding:6px 12px;color:white;cursor:pointer;font-size:12px;font-weight:700">⬇️ Télécharger</button>
+        <button onclick="closePreviewModal()"
+          style="background:#EF4444;border:none;border-radius:8px;padding:6px 12px;color:white;cursor:pointer;font-size:14px;font-weight:700">✕</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;background:#F8FAFC;border-radius:0 0 12px 12px;padding:16px;max-width:85vw;width:100%">
+      ${contentHTML}
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+function closePreviewModal() {
+  const modal = document.getElementById('pj-preview-modal');
+  if (modal) modal.style.display = 'none';
 }
 
 function downloadReunionPJ(catKey, n, i) {
