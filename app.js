@@ -4169,6 +4169,16 @@ function buildDocsAdmTable() {
             </th>`).join('')}
           <th class="no-print"></th>
         </tr>
+        <tr style="background:#FEF9C3">
+          <td style="font-size:11px;color:#92400E;font-weight:700;padding:4px 10px;white-space:nowrap">✅ Tout cocher</td>
+          ${cols.map((_,ci) => `
+            <td style="text-align:center;padding:4px">
+              <input type="checkbox" title="Tout cocher/décocher colonne ${ci+1}"
+                style="width:16px;height:16px;cursor:pointer;accent-color:#F59E0B"
+                onchange="toggleDocsAdmCol(${ci},this.checked)">
+            </td>`).join('')}
+          <td class="no-print"></td>
+        </tr>
       </thead>
       <tbody id="classe-docsadm-body"></tbody>
     </table>`;
@@ -4179,6 +4189,16 @@ function buildDocsAdmTable() {
   } else {
     rows.forEach(row => addDocsAdmRow(row.name, row.checks));
   }
+}
+
+function toggleDocsAdmCol(ci, checked) {
+  const body = document.getElementById('classe-docsadm-body');
+  if (!body) return;
+  body.querySelectorAll('tr').forEach(tr => {
+    const boxes = tr.querySelectorAll('input[type=checkbox]');
+    if (boxes[ci]) boxes[ci].checked = checked;
+  });
+  saveDocsAdm();
 }
 
 function addDocsAdmRow(name='', checks=[]) {
