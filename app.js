@@ -236,18 +236,19 @@ function _buildDashboardContent(container) {
     </div>`;
 
   // ── En-tête du tableau de bord ──
-  const personnel = getData('gen.identites') || [];
+  const personnel = getData('gen.enseignants') || [];
   const logoData  = getData('gen.logo') || '';
 
-  const personnelHTML = personnel.filter(p => p[0]?.trim()).slice(0, 8).map(p => {
-    const isMgmt = p[1]?.includes('Direct') || p[1]?.includes('Intérim');
-    const isInterim = p[1]?.includes('Intérim');
+  const personnelHTML = personnel.filter(p => p.nom?.trim()).slice(0, 8).map(p => {
+    const isMgmt = p.role?.includes('Direct') || p.role?.includes('Intérim');
+    const isInterim = p.role?.includes('Intérim');
     const bg = isInterim ? 'rgba(253,230,138,.4)' : isMgmt ? 'rgba(196,181,253,.4)' : 'rgba(255,255,255,.15)';
-    const icon = isInterim ? '🔄' : p[1]?.includes('Direct') ? '⭐' : p[1]?.toLowerCase().includes('aesh') ? '🤝' : '👩‍🏫';
+    const icon = isInterim ? '🔄' : p.role?.includes('Direct') ? '⭐' : p.role?.includes('AESH') || p.role?.includes('AVS') ? '🤝' : p.role?.includes('ATSEM') ? '🌟' : '👩‍🏫';
+    const label = p.role && p.role !== '—' ? p.role : (p.classe && p.classe !== '—' ? p.classe : '');
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;background:${bg};margin-bottom:4px">
       <span style="font-size:14px">${icon}</span>
-      <span style="font-size:12px;font-weight:${isMgmt?'900':'700'};flex:1;color:white">${p[0]}</span>
-      <span style="font-size:10px;opacity:.85;color:white;font-style:italic">${p[1]||''}</span>
+      <span style="font-size:12px;font-weight:${isMgmt?'900':'700'};flex:1;color:white">${p.nom}</span>
+      <span style="font-size:10px;opacity:.85;color:white;font-style:italic">${label}</span>
     </div>`;
   }).join('');
 
@@ -1129,12 +1130,11 @@ function importExcelToTable(input) {}
 // ══════════════════════════════════════
 // EBP — REGISTRE PAI
 // ══════════════════════════════════════
-// Lit les noms depuis gen.identites pour construire une liste déroulante
+// Lit les noms depuis gen.enseignants pour construire une liste déroulante
 function getClasseOptions(selected='') {
-  const identites = getData('gen.identites') || [];
-  const noms = identites.map(row => Array.isArray(row) ? row[0] : (row.nom || row[0] || '')).filter(Boolean);
+  const enseignants = getData('gen.enseignants') || [];
+  const noms = enseignants.map(r => r.nom || '').filter(Boolean);
   const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
-  // Combine classe names + teacher names from identités
   const allOpts = [...classNames, ...noms.filter(n => !classNames.includes(n))];
   return `<option value="">—</option>` +
     allOpts.map(n => `<option value="${n}" ${selected===n?'selected':''}>${n}</option>`).join('');
@@ -1650,12 +1650,21 @@ function buildEnseignantsTable() {
   const wrap = document.getElementById('enseignants-table-wrap');
   if (!wrap) return;
   const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
-  const saved = getData('gen.enseignants') || [];
+  let saved = getData('gen.enseignants') || [];
 
-  // S'assurer qu'on a une ligne par classe + une ligne direction + lignes libres
-  // Structure : [{classe, nom, tel, email, notes}]
-  // Pré-remplir avec les classes existantes si pas encore de données
-  let rows = saved.length > 0 ? saved : classNames.map(c => ({ classe: c, nom:'', tel:'', email:'', notes:'' }));
+  // Migration depuis l'ancien gen.identites si gen.enseignants vide
+  if (saved.length === 0) {
+    const oldIdentites = getData('gen.identites') || [];
+    if (oldIdentites.length > 0) {
+      // Ancien format : [nom, poste, tel, email, contrat, notes]
+      saved = oldIdentites.filter(p => Array.isArray(p) && p[0]?.trim()).map(p => ({
+        classe: '—', nom: p[0]||'', role: p[1]||'—', tel: p[2]||'', email: p[3]||'', notes: p[5]||''
+      }));
+    } else {
+      // Premier lancement : une ligne par classe
+      saved = classNames.map(c => ({ classe: c, nom:'', role:'Enseignant(e)', tel:'', email:'', notes:'' }));
+    }
+  }
 
   wrap.innerHTML = `
     <div class="table-wrap">
@@ -1670,17 +1679,18 @@ function buildEnseignantsTable() {
           <th class="no-print" style="width:36px"></th>
         </tr></thead>
         <tbody id="enseignants-tbody">
-          ${rows.map((r,i) => enseignantRowHTML(r, i, classNames)).join('')}
+          ${saved.map((r,i) => enseignantRowHTML(r, i, classNames)).join('')}
         </tbody>
       </table>
     </div>
-    <button onclick="addEnseignantRow()" style="margin-top:8px;background:#FDE68A;border:none;border-radius:10px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;color:#1E3A5F">+ Ajouter un enseignant</button>`;
+    <button onclick="addEnseignantRow()" style="margin-top:8px;background:#FDE68A;border:none;border-radius:10px;padding:7px 16px;font-size:12px;font-weight:800;cursor:pointer;color:#1E3A5F">+ Ajouter un membre du personnel</button>`;
 }
 
 function enseignantRowHTML(r, i, classNames) {
   const opts = ['—', ...( classNames || getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'])]
     .map(c => `<option value="${c}" ${r.classe===c?'selected':''}>${c}</option>`).join('');
-  const roleOpts = ['—','Directrice','Directeur','Directrice adjointe','Directeur adjoint','Intérim direction','Enseignant(e)']
+  const roleOpts = ['—','Directrice','Directeur','Directrice adjointe','Directeur adjoint','Intérim direction',
+    'Enseignant(e)','Enseignant(e) remplaçant(e)','ATSEM','AESH','AVS','Psychologue EN','Médecin scolaire','Infirmier(e)','Agent entretien','Autre']
     .map(ro => `<option value="${ro}" ${(r.role||'—')===ro?'selected':''}>${ro}</option>`).join('');
   const isMgmt = r.role && (r.role.includes('Direct') || r.role.includes('Intérim'));
   const rowBg  = r.role?.includes('Intérim') ? 'background:#FEF9C3' : isMgmt ? 'background:#EDE9FE' : '';
@@ -1723,9 +1733,6 @@ function saveEnseignants() {
   });
   setData('gen.enseignants', rows);
   debounceSave();
-  // Mettre à jour gen.identites pour les listes déroulantes
-  const identites = rows.filter(r => r.nom.trim()).map(r => [r.nom, r.role !== '—' ? r.role : r.classe, r.tel, r.email, '', r.notes]);
-  setData('gen.identites', identites);
 }
 
 function uploadLogo() {
