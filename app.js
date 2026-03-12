@@ -3188,21 +3188,29 @@ async function clearHandleFromDB() {
 }
 
 // ── Reconnexion silencieuse au démarrage ──
+let _oneDriveReconnecting = false; // bloque saveAll pendant la reconnexion
+
 async function tryAutoReconnect() {
   if (!window.showSaveFilePicker) return;
   const handle = await loadHandleFromDB();
   if (!handle) return;
   fileHandle = handle;
+  _oneDriveReconnecting = true; // ← bloque l'autosave OneDrive
   const perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm === 'granted') {
     updateOneDriveStatus(true, handle.name);
-    // Charger silencieusement si le fichier OneDrive est plus récent
     try {
       const file = await handle.getFile();
       const localTs = parseInt(localStorage.getItem('cahier_last_save') || '0');
-      if (file.lastModified > localTs) {
+      const localHasData = Object.keys(state.data || {}).length > 0;
+      // Charger depuis OneDrive si : localStorage vide OU fichier OneDrive plus récent
+      if (!localHasData || file.lastModified > localTs) {
         applyImportedData(JSON.parse(await file.text()));
-        showToast('☁️ Données synchronisées depuis OneDrive');
+        showToast('☁️ Données chargées depuis OneDrive');
+        if (!localHasData) {
+          // Afficher un message explicite si on a récupéré des données
+          setTimeout(() => showToast('✅ Vos données ont été restaurées depuis OneDrive !'), 2000);
+        }
       } else {
         showToast('☁️ OneDrive reconnecté — données à jour');
       }
@@ -3211,8 +3219,15 @@ async function tryAutoReconnect() {
     }
   } else {
     updateOneDriveStatus('pending', handle.name);
-    showToast('☁️ OneDrive : cliquez 💾 pour resynchroniser');
+    // Si localStorage vide et OneDrive lié mais permission non accordée → avertir
+    const localHasData = Object.keys(state.data || {}).length > 0;
+    if (!localHasData) {
+      showToast('⚠️ Cliquez sur ☁️ pour récupérer vos données OneDrive', 6000);
+    } else {
+      showToast('☁️ OneDrive : cliquez 💾 pour resynchroniser');
+    }
   }
+  _oneDriveReconnecting = false; // ← débloque l'autosave
 }
 
 // ── Sauvegarde ──
@@ -3226,13 +3241,14 @@ async function saveAll() {
   } catch(e) {}
 
   if (fileHandle) {
+    // Ne jamais écrire sur OneDrive pendant la reconnexion au démarrage
+    if (_oneDriveReconnecting) {
+      showToast('💾 Sauvegardé localement (synchro OneDrive en cours…)');
+      return;
+    }
     try {
-      // Jamais de requestPermission ici — seulement vérifier silencieusement
       const perm = await fileHandle.queryPermission({ mode: 'readwrite' });
-      if (perm !== 'granted') {
-        // Permission non accordée — sauvegarde locale seulement, sans popup
-        return;
-      }
+      if (perm !== 'granted') return;
       const w = await fileHandle.createWritable();
       await w.write(getPayload());
       await w.close();
@@ -3485,7 +3501,7 @@ function printSection() {
 </html>`);
   win.document.close();
 }
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.add('hidden'),2500);}
+function showToast(msg, duration=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.add('hidden'),duration);}
 
 // ══════════════════════════════════════
 // NOTES & RAPPELS
