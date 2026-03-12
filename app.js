@@ -2941,12 +2941,24 @@ function _renderReunionList(catKey) {
           <div class="reunion-field full"><label>Ordre du jour</label><textarea rows="3" data-key="reunions.${catKey}.r${n}.odj" placeholder="Points à aborder…"></textarea></div>
           <div class="reunion-field full"><label>Notes &amp; discussions</label><textarea rows="5" data-key="reunions.${catKey}.r${n}.notes" placeholder="Notes libres…"></textarea></div>
           <div class="reunion-field full"><label>Décisions &amp; actions</label><textarea rows="3" data-key="reunions.${catKey}.r${n}.decisions" placeholder="Actions à mener, responsables…"></textarea></div>
+          <!-- Pièces jointes -->
+          <div class="reunion-field full">
+            <label>📎 Pièces jointes</label>
+            <div id="pj-list-${catKey}-${n}" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+            <button onclick="addReunionPJ('${catKey}',${n})"
+              style="background:#EFF6FF;border:1.5px dashed #93C5FD;border-radius:10px;padding:7px 14px;font-size:12px;color:#1D4ED8;cursor:pointer;font-weight:700">
+              📎 Ajouter un fichier
+            </button>
+          </div>
         </div>
       </div>
     </div>`;
   }).join('');
 
-  setTimeout(() => loadFormData(), 50);
+  setTimeout(() => {
+    loadFormData();
+    ids.forEach(n => _renderReunionPJ(catKey, n));
+  }, 50);
 }
 
 function showReunionCat(catKey) {
@@ -2963,7 +2975,78 @@ function toggleReunion(catKey, n) {
   const open = body.style.display === 'none';
   body.style.display = open ? 'block' : 'none';
   if (toggle) toggle.textContent = open ? '▼' : '▶';
-  if (open) setTimeout(() => loadFormData(), 50);
+  if (open) setTimeout(() => { loadFormData(); _renderReunionPJ(catKey, n); }, 50);
+}
+
+// ── Pièces jointes réunions ──
+function addReunionPJ(catKey, n) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.txt,.odt,.ods';
+  input.onchange = async e => {
+    const files = [...e.target.files];
+    if (!files.length) return;
+    const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) { showToast(`⚠️ ${file.name} trop lourd (max 5 Mo)`); continue; }
+      const b64 = await new Promise(res => {
+        const r = new FileReader();
+        r.onload = ev => res(ev.target.result);
+        r.readAsDataURL(file);
+      });
+      pjs.push({ name: file.name, size: file.size, type: file.type, data: b64 });
+    }
+    setData(`reunions.${catKey}.r${n}.pj`, pjs);
+    debounceSave();
+    _renderReunionPJ(catKey, n);
+    showToast(`📎 ${files.length} fichier(s) ajouté(s)`);
+  };
+  input.click();
+}
+
+function _renderReunionPJ(catKey, n) {
+  const wrap = document.getElementById(`pj-list-${catKey}-${n}`);
+  if (!wrap) return;
+  const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
+  if (pjs.length === 0) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = pjs.map((pj, i) => {
+    const icon = pj.type?.includes('pdf') ? '📄' :
+                 pj.type?.includes('image') ? '🖼️' :
+                 pj.type?.includes('word') || pj.name?.endsWith('.doc') || pj.name?.endsWith('.docx') ? '📝' :
+                 pj.type?.includes('sheet') || pj.name?.endsWith('.xls') || pj.name?.endsWith('.xlsx') ? '📊' :
+                 pj.type?.includes('presentation') || pj.name?.endsWith('.ppt') ? '📊' : '📎';
+    const kb = pj.size ? `${Math.round(pj.size/1024)} Ko` : '';
+    return `<div style="display:flex;align-items:center;gap:6px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:6px 10px;max-width:220px">
+      <span style="font-size:18px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:#1E3A5F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pj.name}</div>
+        <div style="font-size:10px;color:#94A3B8">${kb}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button onclick="downloadReunionPJ('${catKey}',${n},${i})" title="Télécharger"
+          style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px">⬇️</button>
+        <button onclick="deleteReunionPJ('${catKey}',${n},${i})" title="Supprimer"
+          style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px;color:#EF4444">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function downloadReunionPJ(catKey, n, i) {
+  const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
+  const pj = pjs[i]; if (!pj) return;
+  const a = document.createElement('a');
+  a.href = pj.data; a.download = pj.name; a.click();
+}
+
+function deleteReunionPJ(catKey, n, i) {
+  if (!confirm(`Supprimer "${(getData(`reunions.${catKey}.r${n}.pj`)||[])[i]?.name}" ?`)) return;
+  const pjs = getData(`reunions.${catKey}.r${n}.pj`) || [];
+  pjs.splice(i, 1);
+  setData(`reunions.${catKey}.r${n}.pj`, pjs);
+  debounceSave();
+  _renderReunionPJ(catKey, n);
 }
 
 function addReunion(catKey) {
