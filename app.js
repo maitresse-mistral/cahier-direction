@@ -919,7 +919,7 @@ function addEffectifsRow(ci, data=null) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:150px;border:none;padding:8px 10px;font-weight:600" oninput="calcEffectifsTotals(${ci})"></td>
-    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.ddn||'')}" style="border:none;padding:6px 4px;font-size:12px;width:110px" onchange="this.value=frToIso(this.value)||this.value;saveEffectifsClass(${ci})"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.ddn||'')}" style="border:none;padding:6px 4px;font-size:12px;width:110px" onchange="saveEffectifsClass(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="f" ${d.genre==='f'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="g" ${d.genre==='g'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
     ${niveauPickerHTML(d.niv1||'', ci, 0)}
@@ -965,16 +965,18 @@ function saveEffectifsClass(ci) {
   if (!body) return;
   const rows = [...body.querySelectorAll('tr')].map(tr => {
     const texts = tr.querySelectorAll('input[type=text]');
-    const dates = tr.querySelectorAll('input[type=date]');
     const checks = tr.querySelectorAll('input[type=checkbox]');
     const genre = tr.querySelector('input[value=f]')?.checked ? 'f' : tr.querySelector('input[value=g]')?.checked ? 'g' : '';
     const pickers = tr.querySelectorAll('.niveau-picker');
     const getNiv = (p) => p?.querySelector('.niveau-btn.active')?.dataset.niveau || '';
+    // DDN : texts[0]=nom, texts[1]=ddn (type text jj/mm/aaaa), texts[2]=notes
+    const ddnRaw = texts[1]?.value || '';
+    const ddn = frToIso(ddnRaw) || ddnRaw; // stocker en ISO si possible
     return {
-      nom: texts[0]?.value||'', ddn: dates[0]?.value||'', genre,
+      nom: texts[0]?.value||'', ddn,  genre,
       niv1: getNiv(pickers[0]),
       bep:checks[0]?.checked, pai:checks[1]?.checked, ppre:checks[2]?.checked,
-      ee:checks[3]?.checked, aesh:checks[4]?.checked, notes:texts[1]?.value||''
+      ee:checks[3]?.checked, aesh:checks[4]?.checked, notes:texts[2]?.value||''
     };
   });
   setData(`admin.effectifs.c${ci}`, rows);
@@ -1412,16 +1414,20 @@ function renderAeshFull(aeshList) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
           <span style="font-size:11px;color:#64748B;font-weight:700">Couleur :</span>
           ${[
-            {color:'#ffffff', label:'⬜ Libre'},
-            {color:'#BBF7D0', label:'🟢 Élève 1'},
-            {color:'#93C5FD', label:'🔵 Élève 2'},
-            {color:'#FDE68A', label:'🟡 Récré'},
-            {color:'#BFDBFE', label:'🩵 Méridienne'},
-            {color:'#FCA5A5', label:'🔴 Absent'},
+            {color:'#ffffff'},
+            {color:'#BBF7D0'},
+            {color:'#93C5FD'},
+            {color:'#FDE68A'},
+            {color:'#BFDBFE'},
+            {color:'#FCA5A5'},
+            {color:'#E9D5FF'},
+            {color:'#FED7AA'},
           ].map((c,ci) => `<button id="aesh-color-btn-${ai}-${ci}" onclick="setAeshColor('${c.color}',${ai},${ci})"
-            style="background:${c.color};border:1.5px solid #E2E8F0;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
-            ${c.label}
+            style="background:${c.color};border:2px solid #E2E8F0;border-radius:50%;width:26px;height:26px;cursor:pointer;flex-shrink:0;transition:transform .1s">
           </button>`).join('')}
+          <button id="aesh-color-btn-${ai}-eraser" onclick="setAeshColor('__erase__',${ai},'eraser')"
+            style="background:#F1F5F9;border:2px solid #E2E8F0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center"
+            title="Effacer la couleur d'un créneau">🧹</button>
           <span style="font-size:11px;color:#94A3B8">← sélectionnez, puis cliquez une cellule</span>
         </div>
         <div class="aesh-edt-grid">
@@ -1434,11 +1440,7 @@ function renderAeshFull(aeshList) {
                 const colorKey = `ebp.aesh.${ai}.edt.${hKey}.${d}_color`;
                 return `<div class="aesh-cell edt-slot" data-colorkey="${colorKey}"
                   onclick="applyAeshColor(this,'${colorKey}')"
-                  style="cursor:pointer;position:relative;user-select:none">
-                  <textarea rows="2" data-key="${key}" placeholder="Élève(s)…"
-                    style="background:transparent;width:100%;resize:none;pointer-events:auto;font-size:11px;line-height:1.4"
-                    onclick="event.stopPropagation()"
-                    onchange="saveFormData()"></textarea>
+                  style="cursor:pointer;position:relative;user-select:none;min-height:36px">
                 </div>`;
               }).join('');
               return `<div class="aesh-cell time">${h}</div>${slots}`;
@@ -3184,17 +3186,26 @@ let selectedAeshColor = '#BBF7D0';
 
 function setAeshColor(color, ai, ci) {
   selectedAeshColor = color;
-  // Surbrillance du bouton sélectionné
-  for (let i = 0; i < 6; i++) {
+  // Surbrillance du bouton sélectionné (8 couleurs + gomme)
+  for (let i = 0; i < 8; i++) {
     const btn = document.getElementById(`aesh-color-btn-${ai}-${i}`);
-    if (btn) btn.style.border = i === ci ? '2.5px solid #1E3A5F' : '1.5px solid #E2E8F0';
+    if (btn) btn.style.border = i === ci ? '3px solid #1E3A5F' : '2px solid #E2E8F0';
   }
+  const eraser = document.getElementById(`aesh-color-btn-${ai}-eraser`);
+  if (eraser) eraser.style.border = ci === 'eraser' ? '3px solid #1E3A5F' : '2px solid #E2E8F0';
 }
 
 function applyAeshColor(cell, colorKey) {
   const color = selectedAeshColor;
-  cell.style.background = color === '#ffffff' ? 'transparent' : color;
-  setData(colorKey, color === '#ffffff' ? '' : color);
+  if (!color) return;
+  if (color === '__erase__') {
+    // Effacer : fond transparent + supprimer la donnée
+    cell.style.background = 'transparent';
+    setData(colorKey, '');
+  } else {
+    cell.style.background = color === '#ffffff' ? 'transparent' : color + '99';
+    setData(colorKey, color === '#ffffff' ? '' : color);
+  }
   debounceSave();
 }
 
