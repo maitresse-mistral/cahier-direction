@@ -1021,6 +1021,7 @@ function syncEffectifsToEbp() {
         if (e.apc  !== row.apc)  { row.apc  = !!e.apc;  changed = true; }
         if ((e.psy||'')   !== (row.psy||''))   { row.psy   = e.psy||'';   changed = true; }
         if ((e.suivi||'') !== (row.suivi||'')) { row.suivi = e.suivi||''; changed = true; }
+        if ((e.notes||'') && (e.notes||'') !== (row.obs||'')) { row.obs = e.notes||''; changed = true; }
         if (classNames[ci] && row.classe !== classNames[ci]) { row.classe = classNames[ci]; changed = true; }
       } else {
         const newRow = {
@@ -1028,7 +1029,7 @@ function syncEffectifsToEbp() {
           pai: !!e.pai, ess: false, ee: !!e.ee, ppre: !!e.ppre,
           pps: false, aesh: !!e.aesh, apc: !!e.apc,
           psy: e.psy||'', suivi: e.suivi||'',
-          rev1:'', rev2:'', rev3:'', obs:''
+          rev1:'', rev2:'', rev3:'', obs: e.notes||''
         };
         ebpRows.push(newRow);
         index[key] = ebpRows.length - 1;
