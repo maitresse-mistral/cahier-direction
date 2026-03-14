@@ -80,24 +80,27 @@ function _buildDashboardContent(container) {
   const classeRows = classNames.map((nom, ci) => {
     const eleves = getData(`admin.effectifs.c${ci}`) || [];
     const actifs = eleves.filter(e => e.nom?.trim());
-    const f = actifs.filter(e => e.genre === 'f').length;
-    const g = actifs.filter(e => e.genre === 'g').length;
+    const f   = actifs.filter(e => e.genre === 'f').length;
+    const g   = actifs.filter(e => e.genre === 'g').length;
     const bep = actifs.filter(e => e.bep).length;
-    const pai = actifs.filter(e => e.pai || e.ppre || e.ee).length;
+    const pai = actifs.filter(e => e.pai).length;   // uniquement case PAI cochée
     totalEleves += actifs.length; totalF += f; totalG += g;
     totalBep += bep; totalPai += pai;
-    const badges = [
-      bep ? `<span style="font-size:10px;background:#FEF9C3;color:#92400E;padding:1px 5px;border-radius:6px">BEP ${bep}</span>` : '',
-      pai ? `<span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 5px;border-radius:6px">PAI ${pai}</span>` : ''
-    ].filter(Boolean).join(' ');
-    return `<div style="display:flex;align-items:center;padding:5px 8px;border-radius:8px;background:#F8FAFF;margin-bottom:4px;font-size:11px;gap:0">
-      <span style="font-weight:900;color:#1E3A5F;width:52px;flex-shrink:0">${nom}</span>
-      <span style="color:#64748B;width:58px;flex-shrink:0">${actifs.length} élèves</span>
-      <span style="color:#EC4899;width:28px;flex-shrink:0;text-align:center">👧${f}</span>
-      <span style="color:#3B82F6;width:28px;flex-shrink:0;text-align:center">👦${g}</span>
-      <span style="flex:1;display:flex;gap:4px;justify-content:flex-end">${badges}</span>
+    return `<div style="display:grid;grid-template-columns:52px 64px 36px 36px 52px 52px;align-items:center;padding:5px 8px;border-radius:8px;background:#F8FAFF;margin-bottom:4px;font-size:11px;gap:0">
+      <span style="font-weight:900;color:#1E3A5F">${nom}</span>
+      <span style="color:#64748B">${actifs.length} élèves</span>
+      <span style="color:#EC4899;text-align:center">👧${f}</span>
+      <span style="color:#3B82F6;text-align:center">👦${g}</span>
+      <span style="text-align:center">${bep ? `<span style="font-size:10px;background:#FEF9C3;color:#92400E;padding:1px 5px;border-radius:6px">BEP ${bep}</span>` : ''}</span>
+      <span style="text-align:center">${pai ? `<span style="font-size:10px;background:#FEE2E2;color:#991B1B;padding:1px 5px;border-radius:6px">PAI ${pai}</span>` : ''}</span>
     </div>`;
   }).join('');
+
+  // Ligne d'en-tête alignée sur la même grille
+  const classeHeader = `<div style="display:grid;grid-template-columns:52px 64px 36px 36px 52px 52px;padding:2px 8px;font-size:10px;color:#94A3B8;font-weight:700;gap:0;margin-bottom:2px">
+    <span></span><span>Élèves</span><span style="text-align:center">F</span><span style="text-align:center">G</span>
+    <span style="text-align:center">BEP</span><span style="text-align:center">PAI</span>
+  </div>`;
 
   const widgetEffectifs = `
     <div class="dash-card">
@@ -114,8 +117,9 @@ function _buildDashboardContent(container) {
           <div class="dash-stat" style="background:#FDF2F8;color:#DB2777">👧 ${totalF} filles</div>
           <div class="dash-stat" style="background:#EFF6FF;color:#1D4ED8">👦 ${totalG} garçons</div>
           ${totalBep ? `<div class="dash-stat" style="background:#FEF9C3;color:#92400E">BEP ${totalBep}</div>` : ''}
-          ${totalPai ? `<div class="dash-stat" style="background:#FEE2E2;color:#991B1B">PAI/EE ${totalPai}</div>` : ''}
+          ${totalPai ? `<div class="dash-stat" style="background:#FEE2E2;color:#991B1B">PAI ${totalPai}</div>` : ''}
         </div>
+        ${classeHeader}
         ${classeRows}
       </div>
     </div>`;
