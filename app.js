@@ -832,6 +832,9 @@ function buildEffectifsClasses() {
             <th class="th-rot"><span>PPRE</span></th>
             <th class="th-rot"><span>EE</span></th>
             <th class="th-rot"><span>AESH</span></th>
+            <th class="th-rot"><span>APC</span></th>
+            <th style="min-width:110px">Psy</th>
+            <th style="min-width:130px">Suivi médical</th>
             <th>Notes</th>
             <th class="no-print"></th>
           </tr></thead>
@@ -928,6 +931,9 @@ function addEffectifsRow(ci, data=null) {
     <td style="text-align:center"><input type="checkbox" ${d.ppre?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
     <td style="text-align:center"><input type="checkbox" ${d.ee?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
     <td style="text-align:center"><input type="checkbox" ${d.aesh?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
+    <td style="text-align:center"><input type="checkbox" ${d.apc?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
+    <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="border:none;padding:6px 4px;font-size:12px;width:110px" oninput="saveEffectifsClass(${ci})"></td>
+    <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="border:none;padding:6px 4px;font-size:12px;width:130px" oninput="saveEffectifsClass(${ci})"></td>
     <td><input type="text" value="${d.notes||''}" placeholder="Notes…" style="border:none;padding:8px 10px" oninput="saveEffectifsClass(${ci})"></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEffectifsClass(${ci});calcEffectifsTotals(${ci})">×</button></td>
   `;
@@ -969,14 +975,15 @@ function saveEffectifsClass(ci) {
     const genre = tr.querySelector('input[value=f]')?.checked ? 'f' : tr.querySelector('input[value=g]')?.checked ? 'g' : '';
     const pickers = tr.querySelectorAll('.niveau-picker');
     const getNiv = (p) => p?.querySelector('.niveau-btn.active')?.dataset.niveau || '';
-    // DDN : texts[0]=nom, texts[1]=ddn (type text jj/mm/aaaa), texts[2]=notes
+    // DDN : texts[0]=nom, texts[1]=ddn (type text jj/mm/aaaa), texts[2]=psy, texts[3]=suivi, texts[4]=notes
     const ddnRaw = texts[1]?.value || '';
-    const ddn = frToIso(ddnRaw) || ddnRaw; // stocker en ISO si possible
+    const ddn = frToIso(ddnRaw) || ddnRaw;
     return {
-      nom: texts[0]?.value||'', ddn,  genre,
+      nom: texts[0]?.value||'', ddn, genre,
       niv1: getNiv(pickers[0]),
       bep:checks[0]?.checked, pai:checks[1]?.checked, ppre:checks[2]?.checked,
-      ee:checks[3]?.checked, aesh:checks[4]?.checked, notes:texts[2]?.value||''
+      ee:checks[3]?.checked, aesh:checks[4]?.checked, apc:checks[5]?.checked,
+      psy:texts[2]?.value||'', suivi:texts[3]?.value||'', notes:texts[4]?.value||''
     };
   });
   setData(`admin.effectifs.c${ci}`, rows);
@@ -985,47 +992,38 @@ function saveEffectifsClass(ci) {
 }
 
 // ══ SYNC EFFECTIFS → EBP REGISTRE ══
-// Parcourt toutes les classes, tous les élèves ayant PAI/PPRE/EE/AESH coché
-// et les ajoute/met à jour dans le registre EBP (sans écraser les données existantes)
 function syncEffectifsToEbp() {
   const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
   const ebpRows = getData('ebp.registre') || [];
 
-  // Index existant : nom normalisé → index dans ebpRows
   const index = {};
-  ebpRows.forEach((r, i) => {
-    if (r.nom) index[r.nom.trim().toLowerCase()] = i;
-  });
+  ebpRows.forEach((r, i) => { if (r.nom) index[r.nom.trim().toLowerCase()] = i; });
 
   let changed = false;
-  for (let ci = 0; ci < 5; ci++) {
+  for (let ci = 0; ci < classNames.length; ci++) {
     const eleves = getData(`admin.effectifs.c${ci}`) || [];
     eleves.forEach(e => {
       if (!e.nom || !e.nom.trim()) return;
-      const hasFlag = e.pai || e.ppre || e.ee || e.aesh || e.bep;
-      if (!hasFlag) return; // ne synchronise que les élèves avec au moins un flag
+      const hasFlag = e.pai || e.ppre || e.ee || e.aesh || e.bep || e.apc || e.psy || e.suivi;
+      if (!hasFlag) return;
 
       const key = e.nom.trim().toLowerCase();
       if (index[key] !== undefined) {
-        // Élève déjà dans EBP — mettre à jour les cases seulement si elles ne sont pas déjà cochées
         const row = ebpRows[index[key]];
         if (e.pai  && !row.pai)  { row.pai  = true; changed = true; }
         if (e.ppre && !row.ppre) { row.ppre = true; changed = true; }
         if (e.ee   && !row.ee)   { row.ee   = true; changed = true; }
         if (e.aesh && !row.aesh) { row.aesh = true; changed = true; }
-        // Mettre à jour la classe si vide
+        if (e.apc  && !row.apc)  { row.apc  = true; changed = true; }
+        if (e.psy  && !row.psy)  { row.psy  = e.psy; changed = true; }
+        if (e.suivi && !row.suivi){ row.suivi = e.suivi; changed = true; }
         if (!row.classe && classNames[ci]) { row.classe = classNames[ci]; changed = true; }
       } else {
-        // Nouvel élève à ajouter
         const newRow = {
-          nom: e.nom.trim(),
-          classe: classNames[ci],
-          pai:  !!e.pai,
-          ess:  false,
-          ee:   !!e.ee,
-          ppre: !!e.ppre,
-          pps:  false,
-          aesh: !!e.aesh,
+          nom: e.nom.trim(), classe: classNames[ci],
+          pai: !!e.pai, ess: false, ee: !!e.ee, ppre: !!e.ppre,
+          pps: false, aesh: !!e.aesh, apc: !!e.apc,
+          psy: e.psy||'', suivi: e.suivi||'',
           rev1:'', rev2:'', rev3:'', obs:''
         };
         ebpRows.push(newRow);
@@ -1148,7 +1146,6 @@ function addEbpRow(data=null) {
   const tr = document.createElement('tr');
   const d = data || {};
   const classeOpts = getClasseOptions(d.classe||'');
-  // Colonnes PAI/ESS/EE/PPRE/PPS/AESH : lecture seule, alimentées par les Effectifs
   const roCheck = (val) => val
     ? `<span title="Modifiable dans Effectifs" style="font-size:16px;cursor:default">✅</span>`
     : `<span style="font-size:16px;color:#E2E8F0;cursor:default">⬜</span>`;
@@ -1158,9 +1155,12 @@ function addEbpRow(data=null) {
     ${['pai','ess','ee','ppre','pps','aesh'].map(k =>
       `<td style="text-align:center">${roCheck(d[k])}</td>`
     ).join('')}
-    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev1||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
-    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev2||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
-    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev3||'')}" style="width:110px;border:none;padding:6px" onchange="this.value=frToIso(this.value)||this.value;saveEbpRows()"></td>
+    <td style="text-align:center">${roCheck(d.apc)}</td>
+    <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="width:120px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
+    <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="width:150px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev1||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev2||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
+    <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev3||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="text" value="${d.obs||''}" placeholder="Observations…" style="min-width:160px;border:none;padding:8px 10px" onchange="saveEbpRows()"></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEbpRows()">×</button></td>
   `;
@@ -1169,15 +1169,18 @@ function addEbpRow(data=null) {
 
 function saveEbpRows() {
   const rows = [...document.querySelectorAll('#ebp-registre-body tr')].map(tr => {
-    const inputs = tr.querySelectorAll('input[type=text],input[type=date]');
-    const checks = tr.querySelectorAll('input[type=checkbox]');
+    const inputs = tr.querySelectorAll('input[type=text]');
     const sel = tr.querySelector('select');
+    // Lire les icônes lecture-seule (pas de checkboxes)
+    const spans = [...tr.querySelectorAll('td span')];
+    const roVal = (i) => spans[i]?.textContent?.includes('✅') || false;
     return {
-      nom: inputs[0]?.value, classe: sel?.value||'',
-      pai: checks[0]?.checked, ess: checks[1]?.checked, ee: checks[2]?.checked,
-      ppre: checks[3]?.checked, pps: checks[4]?.checked, aesh: checks[5]?.checked,
-      rev1: inputs[1]?.value, rev2: inputs[2]?.value, rev3: inputs[3]?.value,
-      obs: inputs[4]?.value,
+      nom: inputs[0]?.value||'', classe: sel?.value||'',
+      pai: roVal(0), ess: roVal(1), ee: roVal(2),
+      ppre: roVal(3), pps: roVal(4), aesh: roVal(5), apc: roVal(6),
+      psy: inputs[1]?.value||'', suivi: inputs[2]?.value||'',
+      rev1: inputs[3]?.value||'', rev2: inputs[4]?.value||'', rev3: inputs[5]?.value||'',
+      obs: inputs[6]?.value||'',
     };
   });
   setData('ebp.registre', rows); debounceSave();
@@ -1413,19 +1416,8 @@ function renderAeshFull(aeshList) {
         <h4 style="font-size:15px;font-weight:900;color:#1E3A5F;margin-bottom:8px">📅 Emploi du temps</h4>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
           <span style="font-size:11px;color:#64748B;font-weight:700">Couleur :</span>
-          ${[
-            {color:'#ffffff'},
-            {color:'#BBF7D0'},
-            {color:'#93C5FD'},
-            {color:'#FDE68A'},
-            {color:'#BFDBFE'},
-            {color:'#FCA5A5'},
-            {color:'#E9D5FF'},
-            {color:'#FED7AA'},
-          ].map((c,ci) => `<button id="aesh-color-btn-${ai}-${ci}" onclick="setAeshColor('${c.color}',${ai},${ci})"
-            style="background:${c.color};border:2px solid #E2E8F0;border-radius:50%;width:26px;height:26px;cursor:pointer;flex-shrink:0;transition:transform .1s">
-          </button>`).join('')}
-          <button id="aesh-color-btn-${ai}-eraser" onclick="setAeshColor('__erase__',${ai},'eraser')"
+          <div id="aesh-palette-${ai}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
+          <button onclick="setAeshColor('__erase__',${ai},'eraser')" id="aesh-color-btn-${ai}-eraser"
             style="background:#F1F5F9;border:2px solid #E2E8F0;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center"
             title="Effacer la couleur d'un créneau">🧹</button>
           <span style="font-size:11px;color:#94A3B8">← sélectionnez, puis cliquez une cellule</span>
@@ -1503,7 +1495,6 @@ function addAeshEleve(ai, data=null) {
   const container = document.getElementById(`aesh-eleves-${ai}`);
   if (!container) return;
   const d = data || {};
-  // Couleur par défaut : palette tournante
   const PALETTE = ['#BBF7D0','#BFDBFE','#FDE68A','#FCA5A5','#E9D5FF','#FED7AA','#A5F3FC','#FBCFE8'];
   const idx = container.querySelectorAll('.aesh-eleve-card').length;
   const defaultColor = PALETTE[idx % PALETTE.length];
@@ -1511,7 +1502,7 @@ function addAeshEleve(ai, data=null) {
 
   const card = document.createElement('div');
   card.className = 'aesh-eleve-card';
-  card.style.borderLeft = `4px solid ${color}`;
+  card.style.cssText = `border-left:4px solid ${color};background:${color}22`;
   card.innerHTML = `
     <button class="aesh-eleve-del" onclick="this.closest('.aesh-eleve-card').remove();saveAeshEleves(${ai});refreshAeshPalette(${ai})">×</button>
     <div class="aesh-eleve-grid">
@@ -1533,8 +1524,14 @@ function addAeshEleve(ai, data=null) {
       <div class="field-group"><label>Notes</label>
         <input type="text" value="${d.notes||''}" placeholder="Observations…" oninput="saveAeshEleves(${ai})"></div>
       <div class="field-group"><label>🎨 Couleur EDT</label>
-        <input type="color" value="${color}" 
-          oninput="this.closest('.aesh-eleve-card').style.borderLeft='4px solid '+this.value;saveAeshEleves(${ai});refreshAeshPalette(${ai})">
+        <input type="color" value="${color}"
+          oninput="
+            const c=this.value;
+            const card=this.closest('.aesh-eleve-card');
+            card.style.borderLeft='4px solid '+c;
+            card.style.background=c+'22';
+            saveAeshEleves(${ai});
+            refreshAeshPalette(${ai})">
       </div>
     </div>`;
   container.appendChild(card);
@@ -1544,11 +1541,37 @@ function saveAeshEleves(ai) {
   const container = document.getElementById(`aesh-eleves-${ai}`);
   if (!container) return;
   const eleves = [...container.querySelectorAll('.aesh-eleve-card')].map(card => {
-    const inputs = card.querySelectorAll('input,select');
-    return { nom:inputs[0]?.value||'', classe:inputs[1]?.value||'', besoin:inputs[2]?.value||'', heures:inputs[3]?.value||'', horaires:inputs[4]?.value||'', notes:inputs[5]?.value||'' };
+    const inputs = card.querySelectorAll('input[type=text],input[type=number],select');
+    const colorInput = card.querySelector('input[type=color]');
+    return {
+      nom:     inputs[0]?.value||'',
+      classe:  inputs[1]?.value||'',
+      besoin:  inputs[2]?.value||'',
+      heures:  inputs[3]?.value||'',
+      horaires:inputs[4]?.value||'',
+      notes:   inputs[5]?.value||'',
+      color:   colorInput?.value||'#BBF7D0'
+    };
   });
   setData(`ebp.aesh.${ai}.elevesData`, eleves);
   debounceSave();
+}
+
+function refreshAeshPalette(ai) {
+  const palette = document.getElementById(`aesh-palette-${ai}`);
+  if (!palette) return;
+  const container = document.getElementById(`aesh-eleves-${ai}`);
+  const cards = container ? [...container.querySelectorAll('.aesh-eleve-card')] : [];
+  palette.innerHTML = cards.map((card, ci) => {
+    const nom = card.querySelector('input[type=text]')?.value || `Élève ${ci+1}`;
+    const color = card.querySelector('input[type=color]')?.value || '#BBF7D0';
+    return `<button id="aesh-color-btn-${ai}-${ci}"
+      onclick="setAeshColor('${color}',${ai},${ci})"
+      style="background:${color};border:2px solid #E2E8F0;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#1E3A5F;white-space:nowrap"
+      title="${nom}">
+      ${nom || `Élève ${ci+1}`}
+    </button>`;
+  }).join('');
 }
 
 function loadAeshEleves(ai) {
@@ -1558,6 +1581,7 @@ function loadAeshEleves(ai) {
   const saved = getData(`ebp.aesh.${ai}.elevesData`) || [];
   if (saved.length === 0) addAeshEleve(ai);
   else saved.forEach(d => addAeshEleve(ai, d));
+  refreshAeshPalette(ai);
 }
 
 function showAesh(i) {
@@ -3186,11 +3210,12 @@ let selectedAeshColor = '#BBF7D0';
 
 function setAeshColor(color, ai, ci) {
   selectedAeshColor = color;
-  // Surbrillance du bouton sélectionné (8 couleurs + gomme)
-  for (let i = 0; i < 8; i++) {
-    const btn = document.getElementById(`aesh-color-btn-${ai}-${i}`);
-    if (btn) btn.style.border = i === ci ? '3px solid #1E3A5F' : '2px solid #E2E8F0';
-  }
+  // Réinitialiser tous les boutons de la palette
+  const palette = document.getElementById(`aesh-palette-${ai}`);
+  if (palette) palette.querySelectorAll('button').forEach(b => b.style.border = '2px solid #E2E8F0');
+  // Surbrillance du bouton sélectionné
+  const selected = document.getElementById(`aesh-color-btn-${ai}-${ci}`);
+  if (selected) selected.style.border = '3px solid #1E3A5F';
   const eraser = document.getElementById(`aesh-color-btn-${ai}-eraser`);
   if (eraser) eraser.style.border = ci === 'eraser' ? '3px solid #1E3A5F' : '2px solid #E2E8F0';
 }
