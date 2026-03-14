@@ -1151,15 +1151,16 @@ function addEbpRow(data=null) {
   const tr = document.createElement('tr');
   const d = data || {};
   const classeOpts = getClasseOptions(d.classe||'');
-  // Cases à cocher lecture seule (style identique effectifs)
-  const roCheck = (val) =>
-    `<input type="checkbox" ${val?'checked':''} disabled
-      style="width:15px;height:15px;accent-color:#8B5CF6;cursor:default;opacity:1">`;
+  // Cases à cocher lecture seule avec couleur par type
+  const COLORS = { pai:'#EF4444', ess:'#F97316', ee:'#8B5CF6', ppre:'#3B82F6', pps:'#06B6D4', aesh:'#10B981', apc:'#F59E0B' };
+  const roCheck = (val, key) => val
+    ? `<input type="checkbox" checked disabled style="width:15px;height:15px;accent-color:${COLORS[key]||'#8B5CF6'};cursor:default;opacity:1">`
+    : `<input type="checkbox" disabled style="width:15px;height:15px;cursor:default;opacity:.25">`;
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:130px;padding:8px 10px;border:none;font-weight:600" onchange="saveEbpRows()"></td>
     <td><select style="border:none;padding:6px 4px;font-family:var(--font);font-size:13px" onchange="saveEbpRows()">${classeOpts}</select></td>
     ${['pai','ess','ee','ppre','pps','aesh','apc'].map(k =>
-      `<td style="text-align:center">${roCheck(d[k])}</td>`
+      `<td style="text-align:center">${roCheck(d[k], k)}</td>`
     ).join('')}
     <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="width:120px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
     <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="width:150px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
