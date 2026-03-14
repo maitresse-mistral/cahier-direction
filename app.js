@@ -934,7 +934,8 @@ function addEffectifsRow(ci, data=null) {
     <td style="text-align:center"><input type="checkbox" ${d.apc?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
     <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="border:none;padding:6px 4px;font-size:12px;width:110px" oninput="saveEffectifsClass(${ci})"></td>
     <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="border:none;padding:6px 4px;font-size:12px;width:130px" oninput="saveEffectifsClass(${ci})"></td>
-    <td><input type="text" value="${d.notes||''}" placeholder="Notes…" style="border:none;padding:8px 10px" oninput="saveEffectifsClass(${ci})"></td>
+    <td><textarea placeholder="Notes…" style="border:none;padding:8px 10px;resize:none;overflow:hidden;min-height:32px;width:180px;font-family:var(--font);font-size:13px;background:transparent" rows="1"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveEffectifsClass(${ci})">${d.notes||''}</textarea></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEffectifsClass(${ci});calcEffectifsTotals(${ci})">×</button></td>
   `;
   body.appendChild(tr);
@@ -975,15 +976,17 @@ function saveEffectifsClass(ci) {
     const genre = tr.querySelector('input[value=f]')?.checked ? 'f' : tr.querySelector('input[value=g]')?.checked ? 'g' : '';
     const pickers = tr.querySelectorAll('.niveau-picker');
     const getNiv = (p) => p?.querySelector('.niveau-btn.active')?.dataset.niveau || '';
-    // DDN : texts[0]=nom, texts[1]=ddn (type text jj/mm/aaaa), texts[2]=psy, texts[3]=suivi, texts[4]=notes
+    // texts[0]=nom, texts[1]=ddn, texts[2]=psy, texts[3]=suivi
+    // textarea = notes
     const ddnRaw = texts[1]?.value || '';
     const ddn = frToIso(ddnRaw) || ddnRaw;
+    const notesEl = tr.querySelector('textarea');
     return {
       nom: texts[0]?.value||'', ddn, genre,
       niv1: getNiv(pickers[0]),
       bep:checks[0]?.checked, pai:checks[1]?.checked, ppre:checks[2]?.checked,
       ee:checks[3]?.checked, aesh:checks[4]?.checked, apc:checks[5]?.checked,
-      psy:texts[2]?.value||'', suivi:texts[3]?.value||'', notes:texts[4]?.value||''
+      psy:texts[2]?.value||'', suivi:texts[3]?.value||'', notes:notesEl?.value||''
     };
   });
   setData(`admin.effectifs.c${ci}`, rows);
@@ -1146,22 +1149,23 @@ function addEbpRow(data=null) {
   const tr = document.createElement('tr');
   const d = data || {};
   const classeOpts = getClasseOptions(d.classe||'');
-  const roCheck = (val) => val
-    ? `<span title="Modifiable dans Effectifs" style="font-size:16px;cursor:default">✅</span>`
-    : `<span style="font-size:16px;color:#E2E8F0;cursor:default">⬜</span>`;
+  // Cases à cocher lecture seule (style identique effectifs)
+  const roCheck = (val) =>
+    `<input type="checkbox" ${val?'checked':''} disabled
+      style="width:15px;height:15px;accent-color:#8B5CF6;cursor:default;opacity:1">`;
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:130px;padding:8px 10px;border:none;font-weight:600" onchange="saveEbpRows()"></td>
     <td><select style="border:none;padding:6px 4px;font-family:var(--font);font-size:13px" onchange="saveEbpRows()">${classeOpts}</select></td>
-    ${['pai','ess','ee','ppre','pps','aesh'].map(k =>
+    ${['pai','ess','ee','ppre','pps','aesh','apc'].map(k =>
       `<td style="text-align:center">${roCheck(d[k])}</td>`
     ).join('')}
-    <td style="text-align:center">${roCheck(d.apc)}</td>
     <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="width:120px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
     <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="width:150px;border:none;padding:6px;font-size:12px" onchange="saveEbpRows()"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev1||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev2||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev3||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
-    <td><input type="text" value="${d.obs||''}" placeholder="Observations…" style="min-width:160px;border:none;padding:8px 10px" onchange="saveEbpRows()"></td>
+    <td><textarea placeholder="Observations…" style="border:none;padding:8px 10px;resize:none;overflow:hidden;min-height:32px;width:180px;font-family:var(--font);font-size:13px;background:transparent" rows="1"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveEbpRows()">${d.obs||''}</textarea></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEbpRows()">×</button></td>
   `;
   body.appendChild(tr);
@@ -1170,17 +1174,16 @@ function addEbpRow(data=null) {
 function saveEbpRows() {
   const rows = [...document.querySelectorAll('#ebp-registre-body tr')].map(tr => {
     const inputs = tr.querySelectorAll('input[type=text]');
+    const checks = tr.querySelectorAll('input[type=checkbox]');
     const sel = tr.querySelector('select');
-    // Lire les icônes lecture-seule (pas de checkboxes)
-    const spans = [...tr.querySelectorAll('td span')];
-    const roVal = (i) => spans[i]?.textContent?.includes('✅') || false;
+    const obs = tr.querySelector('textarea')?.value || '';
     return {
       nom: inputs[0]?.value||'', classe: sel?.value||'',
-      pai: roVal(0), ess: roVal(1), ee: roVal(2),
-      ppre: roVal(3), pps: roVal(4), aesh: roVal(5), apc: roVal(6),
+      pai: checks[0]?.checked, ess: checks[1]?.checked, ee: checks[2]?.checked,
+      ppre: checks[3]?.checked, pps: checks[4]?.checked, aesh: checks[5]?.checked, apc: checks[6]?.checked,
       psy: inputs[1]?.value||'', suivi: inputs[2]?.value||'',
       rev1: inputs[3]?.value||'', rev2: inputs[4]?.value||'', rev3: inputs[5]?.value||'',
-      obs: inputs[6]?.value||'',
+      obs,
     };
   });
   setData('ebp.registre', rows); debounceSave();
