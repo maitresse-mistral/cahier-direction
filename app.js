@@ -888,16 +888,43 @@ function showEffectifsClass(i) {
 function renameEffectifsClass(i, newName) {
   const names = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
   const oldName = names[i];
+  if (!newName.trim() || newName === oldName) return;
   names[i] = newName;
   setData('admin.effectifs.classnames', names);
-  // Mettre à jour le tab label
+
+  // 1. Mettre à jour le tab label
   const tabs = document.querySelectorAll('#effectifs-class-tabs .class-tab');
   if (tabs[i]) tabs[i].textContent = newName;
-  // Mettre à jour les selects enseignants si ouverts
+
+  // 2. Mettre à jour les selects enseignants si ouverts
   document.querySelectorAll('#enseignants-tbody select').forEach(sel => {
-    [...sel.options].forEach(opt => { if (opt.value === oldName) opt.value = opt.text = newName; });
+    [...sel.options].forEach(opt => { if (opt.value === oldName) { opt.value = newName; opt.text = newName; } });
   });
+
+  // 3. Mettre à jour la colonne "classe" dans les données EBP
+  const ebpRows = getData('ebp.registre') || [];
+  let ebpChanged = false;
+  ebpRows.forEach(r => {
+    if (r.classe === oldName) { r.classe = newName; ebpChanged = true; }
+  });
+  if (ebpChanged) {
+    setData('ebp.registre', ebpRows);
+    // Recharger le select classe dans le tableau GEN si visible
+    document.querySelectorAll('#ebp-registre-body tr').forEach(tr => {
+      const sel = tr.querySelector('select');
+      if (sel) {
+        [...sel.options].forEach(opt => { if (opt.value === oldName) { opt.value = newName; opt.text = newName; } });
+      }
+    });
+  }
+
+  // 4. Mettre à jour la colonne "classe" dans les élèves effectifs eux-mêmes
+  const eleves = getData(`admin.effectifs.c${i}`) || [];
+  eleves.forEach(e => { if (e.classe === oldName) e.classe = newName; });
+  setData(`admin.effectifs.c${i}`, eleves);
+
   debounceSave();
+  showToast(`✏️ Classe renommée : ${oldName} → ${newName}`);
 }
 
 function niveauPickerHTML(val, ci, nCol) {
