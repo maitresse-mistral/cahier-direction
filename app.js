@@ -921,7 +921,7 @@ function addEffectifsRow(ci, data=null) {
   const d = data || {};
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:150px;border:none;padding:8px 10px;font-weight:600" oninput="calcEffectifsTotals(${ci})"></td>
+    <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:150px;border:none;padding:8px 10px;font-weight:600" oninput="calcEffectifsTotals(${ci});saveEffectifsClass(${ci})"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.ddn||'')}" style="border:none;padding:6px 4px;font-size:12px;width:110px" onchange="saveEffectifsClass(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="f" ${d.genre==='f'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
     <td style="text-align:center"><input type="radio" name="genre-${Date.now()}" value="g" ${d.genre==='g'?'checked':''} onchange="calcEffectifsTotals(${ci})"></td>
@@ -934,7 +934,7 @@ function addEffectifsRow(ci, data=null) {
     <td style="text-align:center"><input type="checkbox" ${d.apc?'checked':''} onchange="saveEffectifsClass(${ci})"></td>
     <td><input type="text" value="${d.psy||''}" placeholder="Nom psy…" style="border:none;padding:6px 4px;font-size:12px;width:110px" oninput="saveEffectifsClass(${ci})"></td>
     <td><input type="text" value="${d.suivi||''}" placeholder="Suivi médical…" style="border:none;padding:6px 4px;font-size:12px;width:130px" oninput="saveEffectifsClass(${ci})"></td>
-    <td><textarea placeholder="Notes…" style="border:none;padding:8px 10px;resize:none;overflow:hidden;min-height:32px;width:180px;font-family:var(--font);font-size:13px;background:transparent" rows="1"
+    <td><textarea placeholder="Notes…" rows="1"
       oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveEffectifsClass(${ci})">${d.notes||''}</textarea></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEffectifsClass(${ci});calcEffectifsTotals(${ci})">×</button></td>
   `;
@@ -1013,14 +1013,15 @@ function syncEffectifsToEbp() {
       const key = e.nom.trim().toLowerCase();
       if (index[key] !== undefined) {
         const row = ebpRows[index[key]];
-        if (e.pai  && !row.pai)  { row.pai  = true; changed = true; }
-        if (e.ppre && !row.ppre) { row.ppre = true; changed = true; }
-        if (e.ee   && !row.ee)   { row.ee   = true; changed = true; }
-        if (e.aesh && !row.aesh) { row.aesh = true; changed = true; }
-        if (e.apc  && !row.apc)  { row.apc  = true; changed = true; }
-        if (e.psy  && !row.psy)  { row.psy  = e.psy; changed = true; }
-        if (e.suivi && !row.suivi){ row.suivi = e.suivi; changed = true; }
-        if (!row.classe && classNames[ci]) { row.classe = classNames[ci]; changed = true; }
+        // Toujours mettre à jour les champs depuis effectifs
+        if (e.pai  !== row.pai)  { row.pai  = !!e.pai;  changed = true; }
+        if (e.ppre !== row.ppre) { row.ppre = !!e.ppre; changed = true; }
+        if (e.ee   !== row.ee)   { row.ee   = !!e.ee;   changed = true; }
+        if (e.aesh !== row.aesh) { row.aesh = !!e.aesh; changed = true; }
+        if (e.apc  !== row.apc)  { row.apc  = !!e.apc;  changed = true; }
+        if ((e.psy||'')   !== (row.psy||''))   { row.psy   = e.psy||'';   changed = true; }
+        if ((e.suivi||'') !== (row.suivi||'')) { row.suivi = e.suivi||''; changed = true; }
+        if (classNames[ci] && row.classe !== classNames[ci]) { row.classe = classNames[ci]; changed = true; }
       } else {
         const newRow = {
           nom: e.nom.trim(), classe: classNames[ci],
@@ -1164,7 +1165,7 @@ function addEbpRow(data=null) {
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev1||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev2||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
     <td><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(d.rev3||'')}" style="width:110px;border:none;padding:6px" onchange="saveEbpRows()"></td>
-    <td><textarea placeholder="Observations…" style="border:none;padding:8px 10px;resize:none;overflow:hidden;min-height:32px;width:180px;font-family:var(--font);font-size:13px;background:transparent" rows="1"
+    <td><textarea placeholder="Observations…" rows="1"
       oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveEbpRows()">${d.obs||''}</textarea></td>
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove();saveEbpRows()">×</button></td>
   `;
