@@ -4479,6 +4479,7 @@ function buildDocsAdmTable() {
       <thead>
         <tr>
           <th style="min-width:150px">Élève</th>
+          <th style="min-width:110px;white-space:nowrap">📅 Date naiss.</th>
           ${cols.map((c,ci) => `
             <th class="th-rot">
               <div class="docsadm-col-header">
@@ -4491,6 +4492,7 @@ function buildDocsAdmTable() {
         </tr>
         <tr style="background:#FEF9C3">
           <td style="font-size:11px;color:#92400E;font-weight:700;padding:4px 10px;white-space:nowrap">✅ Tout cocher</td>
+          <td></td>
           ${cols.map((_,ci) => `
             <td style="text-align:center;padding:4px">
               <input type="checkbox" title="Tout cocher/décocher colonne ${ci+1}"
@@ -4503,11 +4505,10 @@ function buildDocsAdmTable() {
       <tbody id="classe-docsadm-body"></tbody>
     </table>`;
 
-  // Load rows
   if (rows.length === 0) {
     for (let i = 0; i < 3; i++) addDocsAdmRow();
   } else {
-    rows.forEach(row => addDocsAdmRow(row.name, row.checks));
+    rows.forEach(row => addDocsAdmRow(row.name, row.checks, row.ddn||''));
   }
 }
 
@@ -4521,13 +4522,16 @@ function toggleDocsAdmCol(ci, checked) {
   saveDocsAdm();
 }
 
-function addDocsAdmRow(name='', checks=[]) {
+function addDocsAdmRow(name='', checks=[], ddn='') {
   const body = document.getElementById('classe-docsadm-body');
   if (!body) return;
   const cols = getData('classe.docsadm.cols') || DOCSADM_DEFAULT_COLS;
   const tr = document.createElement('tr');
   let cells = `<td><input type="text" value="${name}" placeholder="Nom élève…"
     style="min-width:130px;border:none;padding:8px 10px;font-weight:700"
+    oninput="saveDocsAdm()"></td>`;
+  cells += `<td><input type="text" value="${ddn}" placeholder="jj/mm/aaaa"
+    style="width:105px;border:none;padding:6px 8px;font-size:12px"
     oninput="saveDocsAdm()"></td>`;
   cols.forEach((_,ci) => {
     cells += `<td style="text-align:center"><input type="checkbox" ${checks[ci]?'checked':''}
@@ -4542,16 +4546,105 @@ function addDocsAdmRow(name='', checks=[]) {
 function saveDocsAdm() {
   const body = document.getElementById('classe-docsadm-body');
   if (!body) return;
-  const rows = [...body.querySelectorAll('tr')].map(tr => ({
-    name: tr.querySelector('input[type=text]')?.value || '',
-    checks: [...tr.querySelectorAll('input[type=checkbox]')].map(c => c.checked),
-  }));
+  const rows = [...body.querySelectorAll('tr')].map(tr => {
+    const texts = tr.querySelectorAll('input[type=text]');
+    return {
+      name:   texts[0]?.value || '',
+      ddn:    texts[1]?.value || '',
+      checks: [...tr.querySelectorAll('input[type=checkbox]')].map(c => c.checked),
+    };
+  });
   setData('classe.docsadm.rows', rows);
   debounceSave();
 }
 
+function importDocsAdmFromEffectifs() {
+  const maClasseVal = getData('gen.infos.maclasse');
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  // Choisir la classe à importer
+  const opts = classNames.map((n,i) => `${i}: ${n}`).join('\n');
+  const ci = parseInt(maClasseVal ?? prompt(`Quelle classe importer ?\n${opts}\n\nEntrez le numéro :`) ?? -1);
+  if (isNaN(ci) || ci < 0) return;
+
+  const eleves = getData(`admin.effectifs.c${ci}`) || [];
+  const actifs = eleves.filter(e => e.nom?.trim());
+  if (actifs.length === 0) { showToast('⚠️ Aucun élève dans cette classe'); return; }
+
+  // Récupérer les noms déjà présents dans Docs ADM
+  const existing = new Set(
+    (getData('classe.docsadm.rows') || []).map(r => r.name?.trim().toLowerCase()).filter(Boolean)
+  );
+
+  let added = 0;
+  actifs.forEach(e => {
+    if (existing.has(e.nom.trim().toLowerCase())) return;
+    addDocsAdmRow(e.nom.trim(), [], isoToFr(e.ddn || ''));
+    existing.add(e.nom.trim().toLowerCase());
+    added++;
+  });
+
+  if (added > 0) {
+    saveDocsAdm();
+    showToast(`✅ ${added} élève(s) importé(s) depuis ${classNames[ci]}`);
+  } else {
+    showToast('✅ Tous les élèves sont déjà dans le tableau');
+  }
+}
+
+function syncAnnivFromDocsAdm() {
+  const rows = getData('classe.docsadm.rows') || [];
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const maClasseVal = getData('gen.infos.maclasse');
+  const ci = maClasseVal !== '' && maClasseVal !== null && maClasseVal !== undefined ? parseInt(maClasseVal) : 0;
+  const className = classNames[ci] || 'Ma classe';
+
+  // Index des noms déjà dans les anniversaires
+  const existing = {};
+  for (let m = 0; m <= 11; m++) {
+    (getData(`classe.anniv.${m}`) || []).forEach(e => {
+      if (e.name) {
+        const nomSeul = e.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+        existing[nomSeul] = true;
+      }
+    });
+  }
+
+  const toAdd = {};
+  let added = 0;
+
+  rows.forEach(row => {
+    if (!row.name?.trim() || !row.ddn?.trim()) return;
+    const nomSeul = row.name.trim().toLowerCase();
+    if (existing[nomSeul]) return;
+
+    // Parser la DDN en jj/mm/aaaa
+    const parts = row.ddn.trim().split('/');
+    if (parts.length < 3) return;
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
+    if (isNaN(day) || isNaN(month)) return;
+
+    const label = `${row.name.trim()} (${className})`;
+    if (!toAdd[month]) toAdd[month] = [];
+    toAdd[month].push({ day, name: label, ci });
+    existing[nomSeul] = true;
+    added++;
+  });
+
+  if (added === 0) { showToast('✅ Anniversaires déjà à jour'); return; }
+
+  for (const [m, entries] of Object.entries(toAdd)) {
+    const saved = getData(`classe.anniv.${m}`) || [];
+    const merged = [...saved, ...entries].sort((a, b) => (parseInt(a.day)||0) - (parseInt(b.day)||0));
+    setData(`classe.anniv.${m}`, merged);
+  }
+  debounceSave();
+  const container = document.getElementById('anniv-calendar');
+  if (container) { container.innerHTML = ''; buildAnnivCalendar(true); }
+  showToast(`🎂 ${added} anniversaire(s) ajouté(s) !`);
+}
+
 function addDocsAdmCol() {
-  const cols = getData('classe.docsadm.cols') || DOCSADM_DEFAULT_COLS;
   cols.push('Nouveau doc');
   setData('classe.docsadm.cols', cols);
   buildDocsAdmTable();

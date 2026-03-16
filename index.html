@@ -401,6 +401,7 @@
             <span class="label-sm">📥 Importer liste élèves :</span>
             <input type="file" id="docsadm-excel" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelToDocsAdm(this)">
             <button class="btn-xs" onclick="document.getElementById('docsadm-excel').click()">📂 Fichier Excel</button>
+            <button class="btn-xs" onclick="importDocsAdmFromEffectifs()" style="background:#EDE9FE;color:#7C3AED;border-color:#C4B5FD">📋 Importer depuis Effectifs</button>
             <button class="btn-xs" onclick="addDocsAdmRow()">+ Ajouter élève</button>
             <button class="btn-xs" onclick="addDocsAdmCol()" style="margin-left:auto">＋ Colonne</button>
           </div>
@@ -413,8 +414,9 @@
         <div class="tab-content hidden" id="classe-anniv">
           <h3>Anniversaires — Calendrier de l'année scolaire</h3>
           <div class="import-bar" style="flex-wrap:wrap;gap:8px">
-            <span class="label-sm">🎂 Importer depuis mes effectifs :</span>
-            <button class="btn-xs" onclick="syncAnnivFromEffectifs()" style="background:#FDF2F8;color:#DB2777;border-color:#FBCFE8">✅ Synchroniser ma classe</button>
+            <span class="label-sm">🎂 Synchroniser les anniversaires :</span>
+            <button class="btn-xs" onclick="syncAnnivFromDocsAdm()" style="background:#FDF2F8;color:#DB2777;border-color:#FBCFE8">📋 Depuis Docs ADM (DDN)</button>
+            <button class="btn-xs" onclick="syncAnnivFromEffectifs()" style="background:#EDE9FE;color:#7C3AED;border-color:#C4B5FD">👥 Depuis Effectifs</button>
           </div>
           <div id="anniv-calendar"></div>
         </div>
