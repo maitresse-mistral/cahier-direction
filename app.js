@@ -198,15 +198,19 @@ function _buildDashboardContent(container) {
     </div>`;
 
   // ── Widget Prochaine réunion ──
+  const REUNION_CATS_KEYS = ['maitres','ecole','anim','direct','autres'];
   let nextReunion = null;
-  for (let n = 1; n <= 15; n++) {
-    const label = getData(`reunions.r${n}.label`) || `Réunion ${n}`;
-    const date  = getData(`reunions.r${n}.date`) || '';
-    if (date) {
-      const d = new Date(date);
-      if (d >= today) {
-        if (!nextReunion || d < new Date(nextReunion.date)) {
-          nextReunion = { label, date, n };
+  for (const catKey of REUNION_CATS_KEYS) {
+    const ids = getData(`reunions.cat.${catKey}.ids`) || [];
+    for (const n of ids) {
+      const label = getData(`reunions.${catKey}.r${n}.label`) || `Réunion ${n}`;
+      const date  = getData(`reunions.${catKey}.r${n}.date`) || '';
+      if (date) {
+        const d = new Date(date);
+        if (d >= today) {
+          if (!nextReunion || d < new Date(nextReunion.date)) {
+            nextReunion = { label, date, catKey, n };
+          }
         }
       }
     }
@@ -1836,10 +1840,15 @@ function syncAnnivFromEffectifs() {
   const ci = parseInt(maClasseVal);
   const className = classNames[ci] || `Classe ${ci+1}`;
 
+  // Construire un index des noms déjà présents (par nom seul, sans la classe)
   const existing = {};
   for (let m = 0; m <= 11; m++) {
     (getData(`classe.anniv.${m}`) || []).forEach(e => {
-      if (e.name) existing[e.name.trim().toLowerCase()] = true;
+      if (e.name) {
+        // Extraire le nom seul (sans la partie " (Classe)")
+        const nomSeul = e.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+        existing[nomSeul] = true;
+      }
     });
   }
 
@@ -1849,6 +1858,8 @@ function syncAnnivFromEffectifs() {
   const eleves = getData(`admin.effectifs.c${ci}`) || [];
   eleves.forEach(e => {
     if (!e.nom?.trim() || !e.ddn) return;
+    const nomSeul = e.nom.trim().toLowerCase();
+    if (existing[nomSeul]) return; // déjà présent
     let month, day;
     if (e.ddn.includes('/')) {
       const parts = e.ddn.split('/');
@@ -1861,10 +1872,9 @@ function syncAnnivFromEffectifs() {
     }
     if (isNaN(month) || isNaN(day)) return;
     const label = `${e.nom.trim()} (${className})`;
-    if (existing[label.toLowerCase()]) return;
     if (!toAdd[month]) toAdd[month] = [];
     toAdd[month].push({ day, name: label, ci });
-    existing[label.toLowerCase()] = true;
+    existing[nomSeul] = true;
     added++;
   });
 
