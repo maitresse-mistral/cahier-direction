@@ -3404,14 +3404,23 @@ async function clearHandleFromDB() {
 }
 
 // ── Reconnexion silencieuse au démarrage ──
-let _oneDriveReconnecting = false; // bloque saveAll pendant la reconnexion
+let _oneDriveReconnecting = false;
 
 async function tryAutoReconnect() {
   if (!window.showSaveFilePicker) return;
   const handle = await loadHandleFromDB();
+
+  // Cas "nouvel ordinateur" : OneDrive était lié sur un autre appareil mais pas ici
+  const wasLinked = localStorage.getItem('cahier_onedrive_linked') === '1';
+  if (!handle && wasLinked) {
+    // Afficher invitation à recharger depuis OneDrive
+    setTimeout(() => showNewDeviceModal(), 800);
+    return;
+  }
   if (!handle) return;
+
   fileHandle = handle;
-  _oneDriveReconnecting = true; // ← bloque l'autosave OneDrive
+  _oneDriveReconnecting = true;
   const perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm === 'granted') {
     updateOneDriveStatus(true, handle.name);
@@ -3419,14 +3428,11 @@ async function tryAutoReconnect() {
       const file = await handle.getFile();
       const localTs = parseInt(localStorage.getItem('cahier_last_save') || '0');
       const localHasData = Object.keys(state.data || {}).length > 0;
-      // Charger depuis OneDrive si : localStorage vide OU fichier OneDrive plus récent
       if (!localHasData || file.lastModified > localTs) {
         applyImportedData(JSON.parse(await file.text()));
+        localStorage.setItem('cahier_onedrive_linked', '1');
         showToast('☁️ Données chargées depuis OneDrive');
-        if (!localHasData) {
-          // Afficher un message explicite si on a récupéré des données
-          setTimeout(() => showToast('✅ Vos données ont été restaurées depuis OneDrive !'), 2000);
-        }
+        if (!localHasData) setTimeout(() => showToast('✅ Vos données ont été restaurées !'), 2000);
       } else {
         showToast('☁️ OneDrive reconnecté — données à jour');
       }
@@ -3435,7 +3441,6 @@ async function tryAutoReconnect() {
     }
   } else {
     updateOneDriveStatus('pending', handle.name);
-    // Si localStorage vide et OneDrive lié mais permission non accordée → avertir
     const localHasData = Object.keys(state.data || {}).length > 0;
     if (!localHasData) {
       showToast('⚠️ Cliquez sur ☁️ pour récupérer vos données OneDrive', 6000);
@@ -3443,7 +3448,57 @@ async function tryAutoReconnect() {
       showToast('☁️ OneDrive : cliquez 💾 pour resynchroniser');
     }
   }
-  _oneDriveReconnecting = false; // ← débloque l'autosave
+  _oneDriveReconnecting = false;
+}
+
+function showNewDeviceModal() {
+  // Ne pas afficher si des données existent déjà localement
+  const localHasData = Object.keys(state.data || {}).length > 0;
+
+  let modal = document.getElementById('new-device-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'new-device-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px;padding:32px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">☁️</div>
+      <div style="font-size:20px;font-weight:900;color:#1E3A5F;margin-bottom:8px">Nouvel ordinateur détecté</div>
+      <div style="font-size:14px;color:#64748B;margin-bottom:24px;line-height:1.6">
+        Votre cahier était synchronisé avec OneDrive.<br>
+        Cliquez ci-dessous pour récupérer vos données.
+      </div>
+      <button onclick="loadFromOneDriveNewDevice()" 
+        style="width:100%;background:linear-gradient(135deg,#C4B5FD,#8B5CF6);border:none;border-radius:14px;padding:14px;color:white;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px">
+        📂 Charger mes données depuis OneDrive
+      </button>
+      ${localHasData ? `<button onclick="document.getElementById('new-device-modal').style.display='none'"
+        style="width:100%;background:#F1F5F9;border:none;border-radius:14px;padding:10px;color:#64748B;font-size:13px;cursor:pointer">
+        Continuer avec les données locales
+      </button>` : `<div style="font-size:11px;color:#94A3B8;margin-top:8px">⚠️ Sans chargement, vous repartirez d'un cahier vide</div>`}
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+async function loadFromOneDriveNewDevice() {
+  document.getElementById('new-device-modal').style.display = 'none';
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'Cahier JSON', accept: { 'application/json': ['.json'] } }],
+      multiple: false
+    });
+    fileHandle = handle;
+    await saveHandleToDB(handle);
+    const file = await handle.getFile();
+    applyImportedData(JSON.parse(await file.text()));
+    localStorage.setItem('cahier_onedrive_linked', '1');
+    updateOneDriveStatus(true, handle.name);
+    showToast('✅ Données rechargées depuis OneDrive !', 4000);
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('⚠️ Impossible d\'ouvrir le fichier');
+  }
 }
 
 // ── Sauvegarde ──
@@ -3457,7 +3512,6 @@ async function saveAll() {
   } catch(e) {}
 
   if (fileHandle) {
-    // Ne jamais écrire sur OneDrive pendant la reconnexion au démarrage
     if (_oneDriveReconnecting) {
       showToast('💾 Sauvegardé localement (synchro OneDrive en cours…)');
       return;
@@ -3468,6 +3522,7 @@ async function saveAll() {
       const w = await fileHandle.createWritable();
       await w.write(getPayload());
       await w.close();
+      localStorage.setItem('cahier_onedrive_linked', '1'); // mémoriser qu'OneDrive est lié
       updateOneDriveStatus(true, fileHandle.name);
       showToast('💾 Sauvegardé localement + ☁️ OneDrive');
       return;
