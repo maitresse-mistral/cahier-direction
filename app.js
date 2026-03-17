@@ -4639,7 +4639,10 @@ function buildDocsAdmTable() {
   if (rows.length === 0) {
     for (let i = 0; i < 3; i++) addDocsAdmRow();
   } else {
-    rows.forEach(row => addDocsAdmRow(row.name, row.checks, row.ddn||''));
+    rows.forEach(row => {
+      const ddn = row.ddn ? (row.ddn.includes('-') ? isoToFr(row.ddn) : row.ddn) : '';
+      addDocsAdmRow(row.name, row.checks, ddn);
+    });
   }
 }
 
@@ -4709,7 +4712,9 @@ function importDocsAdmFromEffectifs() {
   let added = 0;
   actifs.forEach(e => {
     if (existing.has(e.nom.trim().toLowerCase())) return;
-    addDocsAdmRow(e.nom.trim(), [], isoToFr(e.ddn || ''));
+    // DDN peut être en ISO (2015-09-01) ou déjà en jj/mm/aaaa
+    const ddn = e.ddn ? (e.ddn.includes('-') ? isoToFr(e.ddn) : e.ddn) : '';
+    addDocsAdmRow(e.nom.trim(), [], ddn);
     existing.add(e.nom.trim().toLowerCase());
     added++;
   });
