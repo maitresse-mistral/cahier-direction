@@ -1081,6 +1081,7 @@ function syncEffectifsToEbp() {
     if (body && body.closest('.tab-content')?.classList.contains('active')) {
       body.innerHTML = '';
       ebpRows.forEach(r => addEbpRow(r));
+      populateEbpClasseFilter();
     }
     showToast('🔄 Registre EBP mis à jour depuis les effectifs');
   }
@@ -1234,6 +1235,28 @@ function loadEbpRows() {
   const saved = getData('ebp.registre') || [];
   if (saved.length === 0) { for(let i=0;i<3;i++) addEbpRow(); }
   else saved.forEach(r => addEbpRow(r));
+  populateEbpClasseFilter();
+}
+
+function populateEbpClasseFilter() {
+  const sel = document.getElementById('ebp-classe-filter');
+  if (!sel) return;
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  // Récupérer aussi les classes présentes dans les données EBP
+  const rows = getData('ebp.registre') || [];
+  const present = [...new Set(rows.map(r => r.classe).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">— Toutes —</option>' +
+    present.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function filterEbpByClasse(classe) {
+  const body = document.getElementById('ebp-registre-body');
+  if (!body) return;
+  [...body.querySelectorAll('tr')].forEach(tr => {
+    const sel = tr.querySelector('select');
+    const trClasse = sel?.value || '';
+    tr.style.display = (!classe || trClasse === classe) ? '' : 'none';
+  });
 }
 
 // EBP SOINS — sorties régulières avec jours de semaine (pas de mercredi)
