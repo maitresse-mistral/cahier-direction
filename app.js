@@ -1259,6 +1259,25 @@ function filterEbpByClasse(classe) {
   });
 }
 
+function sortEbpRows(mode) {
+  const body = document.getElementById('ebp-registre-body');
+  if (!body || !mode) return;
+  const rows = [...body.querySelectorAll('tr')];
+  rows.sort((a, b) => {
+    const classeA = a.querySelector('select')?.value || '';
+    const classeB = b.querySelector('select')?.value || '';
+    const nomA = a.querySelector('input[type=text]')?.value || '';
+    const nomB = b.querySelector('input[type=text]')?.value || '';
+    if (mode === 'classe') return classeA.localeCompare(classeB, 'fr');
+    if (mode === 'classe-nom') return classeA.localeCompare(classeB, 'fr') || nomA.localeCompare(nomB, 'fr');
+    if (mode === 'nom') return nomA.localeCompare(nomB, 'fr');
+    return 0;
+  });
+  rows.forEach(tr => body.appendChild(tr));
+  saveEbpRows();
+  showToast('✅ Tableau trié');
+}
+
 // EBP SOINS — sorties régulières avec jours de semaine (pas de mercredi)
 const JOURS_SOINS = ['Lundi','Mardi','Jeudi','Vendredi'];
 

@@ -317,10 +317,18 @@
           <div class="import-bar" style="flex-wrap:wrap;gap:8px">
             <button class="btn-xs" onclick="addEbpRow()">+ Ajouter élève</button>
             <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-              <label style="font-size:11px;color:#94A3B8;font-weight:700">Trier par classe :</label>
+              <label style="font-size:11px;color:#94A3B8;font-weight:700">Classe :</label>
               <select id="ebp-classe-filter" onchange="filterEbpByClasse(this.value)"
                 style="border:1.5px solid #E2E8F0;border-radius:8px;padding:4px 8px;font-size:12px;font-family:var(--font)">
                 <option value="">— Toutes —</option>
+              </select>
+              <label style="font-size:11px;color:#94A3B8;font-weight:700">Trier :</label>
+              <select id="ebp-sort" onchange="sortEbpRows(this.value)"
+                style="border:1.5px solid #E2E8F0;border-radius:8px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+                <option value="">— Ordre saisie —</option>
+                <option value="classe">Par classe</option>
+                <option value="classe-nom">Par classe puis nom</option>
+                <option value="nom">Par nom</option>
               </select>
             </div>
             <span style="font-size:11px;color:#94A3B8;display:flex;align-items:center;gap:4px">
