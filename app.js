@@ -4776,6 +4776,7 @@ function syncAnnivFromDocsAdm() {
 }
 
 function addDocsAdmCol() {
+  const cols = getData('classe.docsadm.cols') || DOCSADM_DEFAULT_COLS;
   cols.push('Nouveau doc');
   setData('classe.docsadm.cols', cols);
   buildDocsAdmTable();
