@@ -370,6 +370,7 @@ function showTab(section, tab) {
   loadFormData(); initCanvases();
   // Lazy build for special tabs
   if (section === 'ebp' && tab === 'aesh') buildAeshEdt();
+  if (section === 'ebp' && tab === 'apc') buildApcTable();
   if (section === 'classe' && tab === 'anniv') buildAnnivCalendar();
   if (section === 'classe' && tab === 'releves') initReleves();
   if (section === 'admin' && tab === 'commandes') loadCommandeData(cmdCurrentYear);
@@ -3286,6 +3287,136 @@ function applyAeshColor(cell, colorKey) {
 
 
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// APC
+// ══════════════════════════════════════
+let _apcPeriod = 1;
+
+function buildApcTable() {
+  const wrap = document.getElementById('apc-table-wrap');
+  if (!wrap) return;
+  _renderApcTable();
+}
+
+function showApcPeriod(p) {
+  _apcPeriod = p;
+  document.querySelectorAll('.apc-ptab').forEach((b,i) => b.classList.toggle('active', i+1 === p));
+  _renderApcTable();
+}
+
+function _renderApcTable() {
+  const wrap = document.getElementById('apc-table-wrap');
+  if (!wrap) return;
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table" id="apc-table-${_apcPeriod}">
+        <thead>
+          <tr style="background:#EDE9FE">
+            <th style="min-width:160px">Élève</th>
+            <th style="min-width:120px">Classe</th>
+            <th style="width:130px;text-align:center">Jour(s)</th>
+            <th style="min-width:200px">Objectif</th>
+            <th style="min-width:200px">Bilan</th>
+            <th class="no-print" style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="apc-body-${_apcPeriod}">
+          ${rows.map((r,i) => _apcRowHTML(r, i)).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function _apcRowHTML(r, i) {
+  const jours = ['L','M','J','V'];
+  const joursHTML = jours.map(j =>
+    `<button class="apc-jour ${(r.jours||[]).includes(j)?'active':''}"
+      onclick="toggleApcJour(${i},'${j}')">${j}</button>`
+  ).join('');
+  return `<tr>
+    <td><input type="text" value="${r.nom||''}" placeholder="Nom Prénom…"
+      style="border:none;padding:8px 10px;font-weight:600;min-width:140px"
+      onchange="saveApcRow(${i},'nom',this.value)"></td>
+    <td><input type="text" value="${r.classe||''}" placeholder="Classe…"
+      style="border:none;padding:8px 10px;font-size:12px;width:110px"
+      onchange="saveApcRow(${i},'classe',this.value)"></td>
+    <td style="text-align:center">
+      <div style="display:flex;gap:3px;justify-content:center">${joursHTML}</div>
+    </td>
+    <td><textarea placeholder="Objectif…" rows="1"
+      style="width:100%;min-width:180px"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveApcRow(${i},'objectif',this.value)">${r.objectif||''}</textarea></td>
+    <td><textarea placeholder="Bilan…" rows="1"
+      style="width:100%;min-width:180px"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';saveApcRow(${i},'bilan',this.value)">${r.bilan||''}</textarea></td>
+    <td class="no-print"><button class="delete-row-btn"
+      onclick="deleteApcRow(${i})">×</button></td>
+  </tr>`;
+}
+
+function toggleApcJour(i, jour) {
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+  if (!rows[i]) return;
+  const jours = rows[i].jours || [];
+  const idx = jours.indexOf(jour);
+  if (idx >= 0) jours.splice(idx, 1);
+  else jours.push(jour);
+  rows[i].jours = jours;
+  setData(`ebp.apc.p${_apcPeriod}`, rows);
+  debounceSave();
+  _renderApcTable();
+}
+
+function saveApcRow(i, field, val) {
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+  if (!rows[i]) return;
+  rows[i][field] = val;
+  setData(`ebp.apc.p${_apcPeriod}`, rows);
+  debounceSave();
+}
+
+function addApcRow(nom='', classe='') {
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+  rows.push({ nom, classe, jours:[], objectif:'', bilan:'' });
+  setData(`ebp.apc.p${_apcPeriod}`, rows);
+  debounceSave();
+  _renderApcTable();
+}
+
+function deleteApcRow(i) {
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+  rows.splice(i, 1);
+  setData(`ebp.apc.p${_apcPeriod}`, rows);
+  debounceSave();
+  _renderApcTable();
+}
+
+function syncApcFromEffectifs() {
+  const classNames = getData('admin.effectifs.classnames') || ['CP','CE1','CE2','CM1','CM2'];
+  const rows = getData(`ebp.apc.p${_apcPeriod}`) || [];
+  const existing = new Set(rows.map(r => r.nom?.trim().toLowerCase()).filter(Boolean));
+
+  let added = 0;
+  for (let ci = 0; ci < classNames.length; ci++) {
+    const eleves = getData(`admin.effectifs.c${ci}`) || [];
+    eleves.forEach(e => {
+      if (!e.nom?.trim() || !e.apc) return;
+      if (existing.has(e.nom.trim().toLowerCase())) return;
+      rows.push({ nom: e.nom.trim(), classe: classNames[ci], jours:[], objectif:'', bilan:'' });
+      existing.add(e.nom.trim().toLowerCase());
+      added++;
+    });
+  }
+
+  if (added === 0) { showToast('✅ Tous les élèves APC sont déjà présents'); return; }
+  setData(`ebp.apc.p${_apcPeriod}`, rows);
+  debounceSave();
+  _renderApcTable();
+  showToast(`✅ ${added} élève(s) APC ajouté(s) en P${_apcPeriod}`);
+}
+
 // RDV PARENTS
 // ══════════════════════════════════════
 function buildRdvGrid() {

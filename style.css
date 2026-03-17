@@ -76,7 +76,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .data-table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
 .data-table thead tr { background: linear-gradient(135deg, color-mix(in srgb, var(--c,#E2E8F0) 60%, white), white); }
 .data-table th { padding: 10px 8px; text-align: left; font-weight: 800; font-size: 12px; border-bottom: 2px solid var(--border); white-space: nowrap; }
-.data-table td { padding: 0; border-bottom: 1px solid var(--border); }
+.data-table td { padding: 0; border-bottom: 1px solid var(--border); overflow: visible; }
+.data-table td textarea { width: 100%; border: none; background: transparent; padding: 8px 10px; font-family: var(--font); font-size: 13px; color: var(--text); resize: none; overflow: hidden; min-height: 36px; line-height: 1.4; display: block; box-sizing: border-box; }
 .data-table tbody tr:nth-child(even) td { background: #FAFBFF; }
 .data-table tbody tr:hover td { background: #F0F7FF; }
 .data-table td input[type=text], .data-table td input[type=date], .data-table td input[type=time], .data-table td input[type=number], .data-table td select { width: 100%; border: none; background: transparent; padding: 8px 10px; font-family: var(--font); font-size: 13px; color: var(--text); }
@@ -634,3 +635,9 @@ body.stylus-mode .drawing-canvas { cursor: crosshair; }
   font-size: 13px;
   font-weight: 800;
 }
+
+/* APC */
+.apc-ptab { background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:5px 16px;font-size:13px;font-weight:800;cursor:pointer;color:var(--text);font-family:var(--font); }
+.apc-ptab.active { background:#7C3AED;color:white;border-color:#7C3AED; }
+.apc-jour { background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted); }
+.apc-jour.active { background:#7C3AED;color:white;border-color:#7C3AED; }

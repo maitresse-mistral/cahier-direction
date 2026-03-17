@@ -287,13 +287,31 @@
           <h2>03 — Élèves à Besoins Particuliers</h2>
           <div class="subtabs">
             <button class="subtab active" onclick="showTab('ebp','registre')">GEN</button>
+            <button class="subtab" onclick="showTab('ebp','apc')">APC</button>
             <button class="subtab" onclick="showTab('ebp','soins')">Sorties/Soins</button>
             <button class="subtab" onclick="showTab('ebp','aesh')">AESH</button>
             <button class="subtab" onclick="showTab('ebp','rdv')">RDV parents</button>
           </div>
         </div>
 
-        <!-- PAI : dispositifs cochables -->
+        <!-- APC -->
+        <div class="tab-content hidden" id="ebp-apc">
+          <h3>APC — Activités Pédagogiques Complémentaires</h3>
+          <div class="import-bar" style="flex-wrap:wrap;gap:8px">
+            <button class="btn-xs" onclick="syncApcFromEffectifs()" style="background:#EDE9FE;color:#7C3AED;border-color:#C4B5FD">🔄 Sync depuis Effectifs (APC cochés)</button>
+            <button class="btn-xs" onclick="addApcRow()">+ Ajouter un élève</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="apc-period-tabs">
+            <button class="apc-ptab active" onclick="showApcPeriod(1)">P1</button>
+            <button class="apc-ptab" onclick="showApcPeriod(2)">P2</button>
+            <button class="apc-ptab" onclick="showApcPeriod(3)">P3</button>
+            <button class="apc-ptab" onclick="showApcPeriod(4)">P4</button>
+            <button class="apc-ptab" onclick="showApcPeriod(5)">P5</button>
+          </div>
+          <div id="apc-table-wrap"></div>
+        </div>
+
+
         <div class="tab-content active" id="ebp-registre">
           <h3>GEN — Suivi global des élèves</h3>
           <div class="import-bar" style="flex-wrap:wrap;gap:8px">
