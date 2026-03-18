@@ -3498,7 +3498,16 @@ function addRdvFiche(save=true){addRdvFicheFromData({id:Date.now(),eleve:'',date
 function addRdvFicheFromData(f){
   const grid=document.getElementById('rdv-grid'); if(!grid) return;
   const div=document.createElement('div'); div.className='rdv-fiche'; div.dataset.id=f.id;
-  div.innerHTML=`<button class="rdv-delete" onclick="this.parentElement.remove();saveRdvData()">×</button>
+  div.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;gap:4px">
+        <button onclick="moveRdvFiche(this,'up')" title="Monter"
+          style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;cursor:pointer;color:#64748B;font-size:12px">↑</button>
+        <button onclick="moveRdvFiche(this,'down')" title="Descendre"
+          style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;cursor:pointer;color:#64748B;font-size:12px">↓</button>
+      </div>
+      <button class="rdv-delete" onclick="this.closest('.rdv-fiche').remove();saveRdvData()">×</button>
+    </div>
     <label>Élève</label><input type="text" value="${f.eleve||''}" placeholder="Nom &amp; Prénom" onchange="saveRdvData()">
     <label>Date</label><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(f.date||'')}" onchange="saveRdvData()">
     <label>Demandé par</label>
@@ -3508,6 +3517,18 @@ function addRdvFicheFromData(f){
     </div>
     <label>Compte-rendu</label><textarea onchange="saveRdvData()">${f.cr||''}</textarea>`;
   grid.appendChild(div);
+}
+
+function moveRdvFiche(btn, dir) {
+  const fiche = btn.closest('.rdv-fiche');
+  const grid  = document.getElementById('rdv-grid');
+  if (!fiche || !grid) return;
+  if (dir === 'up' && fiche.previousElementSibling) {
+    grid.insertBefore(fiche, fiche.previousElementSibling);
+  } else if (dir === 'down' && fiche.nextElementSibling) {
+    grid.insertBefore(fiche.nextElementSibling, fiche);
+  }
+  saveRdvData();
 }
 function saveRdvData(){
   const fiches=[...document.querySelectorAll('.rdv-fiche')].map(f=>{
