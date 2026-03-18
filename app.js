@@ -2932,8 +2932,6 @@ const REUNION_CATS = [
 ];
 
 function _migrateOldReunions() {
-  // Chercher toutes les anciennes réunions r1…r30
-  const autresIds = _getReunionIds('autres');
   let migrated = 0;
 
   for (let n = 1; n <= 30; n++) {
@@ -2942,13 +2940,18 @@ function _migrateOldReunions() {
     const hasContent = old.label || old.date || old.notes || old.odj || old.decisions || old.participants;
     if (!hasContent) continue;
 
-    // Éviter les doublons
-    const alreadyMigrated = autresIds.some(id => {
-      const d = getData(`reunions.autres.r${id}`);
-      return d && d._fromOld === n;
+    // Vérifier dans TOUTES les catégories si déjà migré (pas juste "autres")
+    const alreadyMigrated = REUNION_CATS.some(cat => {
+      const ids = _getReunionIds(cat.key);
+      return ids.some(id => {
+        const d = getData(`reunions.${cat.key}.r${id}`);
+        return d && d._fromOld === n;
+      });
     });
     if (alreadyMigrated) continue;
 
+    // Pas encore migré — ajouter dans "autres"
+    const autresIds = _getReunionIds('autres');
     const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
     const newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
     autresIds.push(newId);
@@ -2964,11 +2967,11 @@ function _migrateOldReunions() {
       notes:        old.notes        || '',
       decisions:    old.decisions    || '',
     });
+    setData('reunions.cat.autres.ids', autresIds);
     migrated++;
   }
 
   if (migrated > 0) {
-    setData('reunions.cat.autres.ids', autresIds);
     showToast(`✅ ${migrated} ancienne(s) réunion(s) récupérée(s) → Autres`);
     debounceSave();
   }
@@ -3039,6 +3042,10 @@ function _renderReunionList(catKey) {
             title="Cliquez pour renommer">${info}
         </span>
         <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="event.stopPropagation();reorderReunion('${catKey}',${n},-1)" title="Monter"
+            style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 7px;color:#64748B;cursor:pointer;font-size:12px">↑</button>
+          <button onclick="event.stopPropagation();reorderReunion('${catKey}',${n},1)" title="Descendre"
+            style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 7px;color:#64748B;cursor:pointer;font-size:12px">↓</button>
           <select onchange="moveReunion('${catKey}',${n},this.value);this.value=''"
             style="border:1px solid #E2E8F0;border-radius:8px;padding:3px 6px;font-size:11px;color:#64748B;cursor:pointer">
             <option value="">↪ Déplacer…</option>
@@ -3050,7 +3057,8 @@ function _renderReunionList(catKey) {
       </div>
       <div id="reunion-body-${catKey}-${n}" style="display:none">
         <div class="reunion-fields">
-          <div class="reunion-field"><label>Date</label><input type="text" placeholder="jj/mm/aaaa" data-key="reunions.${catKey}.r${n}.date" data-datetype="date"></div>
+          <div class="reunion-field"><label>Date</label><input type="text" placeholder="jj/mm/aaaa" data-key="reunions.${catKey}.r${n}.date" data-datetype="date"
+            oninput="updateReunionDateHeader('${catKey}',${n},this.value)"></div>
           <div class="reunion-field"><label>Heure</label><input type="time" data-key="reunions.${catKey}.r${n}.heure"></div>
           <div class="reunion-field"><label>Lieu</label><input type="text" data-key="reunions.${catKey}.r${n}.lieu" placeholder="Salle des maîtres…"></div>
           <div class="reunion-field full"><label>Participants</label><textarea rows="2" data-key="reunions.${catKey}.r${n}.participants" placeholder="Liste des présents…"></textarea></div>
@@ -3256,31 +3264,40 @@ function deleteReunion(catKey, n) {
   if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = newIds.length; }
 }
 
+function reorderReunion(catKey, n, dir) {
+  const ids = _getReunionIds(catKey);
+  const idx = ids.indexOf(n);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= ids.length) return;
+  ids.splice(idx, 1);
+  ids.splice(newIdx, 0, n);
+  setData(`reunions.cat.${catKey}.ids`, ids);
+  debounceSave();
+  _renderReunionList(catKey);
+}
+
 function moveReunion(fromCat, n, toCat) {
   if (!toCat) return;
-  // Copier les données vers la nouvelle catégorie
   const data = getData(`reunions.${fromCat}.r${n}`) || {};
   const toIds = _getReunionIds(toCat);
   const allIds = REUNION_CATS.flatMap(c => _getReunionIds(c.key));
   const newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
   toIds.push(newId);
-  setData(`reunions.${toCat}.r${newId}`, data);
+  // Conserver le flag _fromOld pour que la migration ne recréé pas de doublon
+  setData(`reunions.${toCat}.r${newId}`, { ...data });
   setData(`reunions.cat.${toCat}.ids`, toIds);
 
   // Supprimer de l'ancienne catégorie
   const fromIds = _getReunionIds(fromCat).filter(id => id !== n);
   setData(`reunions.cat.${fromCat}.ids`, fromIds);
-  setData(`reunions.${fromCat}.r${n}`, {});
+  setData(`reunions.${fromCat}.r${n}`, null); // null = supprimé proprement
 
   debounceSave();
-
-  // Rafraîchir les deux catégories et mettre à jour les compteurs
   _renderReunionList(fromCat);
   _renderReunionList(toCat);
   const catTo = REUNION_CATS.find(c => c.key === toCat);
   showToast(`↪ Réunion déplacée vers ${catTo?.label || toCat}`);
-
-  // Mettre à jour les compteurs dans les onglets
   REUNION_CATS.forEach(cat => {
     const tab = document.getElementById(`rcat-tab-${cat.key}`);
     if (tab) { const span = tab.querySelector('span'); if (span) span.textContent = _getReunionIds(cat.key).length; }
@@ -3291,6 +3308,17 @@ function moveReunion(fromCat, n, toCat) {
 function renameReunionCat(catKey, n, val) {
   setData(`reunions.${catKey}.r${n}.label`, val);
   debounceSave();
+}
+
+function updateReunionDateHeader(catKey, n, val) {
+  // Met à jour l'info date dans le header sans re-rendre toute la carte
+  const header = document.querySelector(`#reunion-${catKey}-${n} .reunion-card-header`);
+  if (!header) return;
+  const infoSpan = header.querySelector('span[data-dateinfo]');
+  const iso = frToIso(val);
+  if (infoSpan) {
+    infoSpan.textContent = iso ? ` — ${val}` : '';
+  }
 }
 
 
@@ -3472,7 +3500,7 @@ function addRdvFicheFromData(f){
   const div=document.createElement('div'); div.className='rdv-fiche'; div.dataset.id=f.id;
   div.innerHTML=`<button class="rdv-delete" onclick="this.parentElement.remove();saveRdvData()">×</button>
     <label>Élève</label><input type="text" value="${f.eleve||''}" placeholder="Nom &amp; Prénom" onchange="saveRdvData()">
-    <label>Date</label><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(f.date||'')}" onchange="f.date=frToIso(this.value)||this.value;saveRdvData()">
+    <label>Date</label><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(f.date||'')}" onchange="saveRdvData()">
     <label>Demandé par</label>
     <div class="rdv-demande">
       <label><input type="radio" name="rdv-dem-${f.id}" value="parents" ${f.demande!=='ecole'?'checked':''} onchange="saveRdvData()"> Parents</label>
@@ -3482,7 +3510,16 @@ function addRdvFicheFromData(f){
   grid.appendChild(div);
 }
 function saveRdvData(){
-  const fiches=[...document.querySelectorAll('.rdv-fiche')].map(f=>({id:f.dataset.id,eleve:f.querySelector('input[type=text]').value,date:f.querySelector('input[type=date]').value,demande:f.querySelector('input[type=radio]:checked')?.value||'parents',cr:f.querySelector('textarea').value}));
+  const fiches=[...document.querySelectorAll('.rdv-fiche')].map(f=>{
+    const texts = f.querySelectorAll('input[type=text]');
+    return {
+      id:    f.dataset.id,
+      eleve: texts[0]?.value || '',
+      date:  frToIso(texts[1]?.value || '') || texts[1]?.value || '',
+      demande: f.querySelector('input[type=radio]:checked')?.value || 'parents',
+      cr:    f.querySelector('textarea')?.value || ''
+    };
+  });
   setData('ebp.rdv',fiches); debounceSave();
 }
 
