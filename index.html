@@ -374,7 +374,11 @@
         <!-- AESH : emplois du temps 6 AESH -->
         <div class="tab-content hidden" id="ebp-aesh">
           <h3>Emplois du temps AESH</h3>
-          <div class="subtabs-inner" id="aesh-subtabs"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+            <div class="subtabs-inner" id="aesh-subtabs"></div>
+            <button onclick="buildAeshSyncView()" class="btn-xs" style="background:#EDE9FE;color:#7C3AED;border-color:#C4B5FD;flex-shrink:0">📅 Vue synchronisée</button>
+          </div>
+          <div id="aesh-sync-view" style="display:none;margin-bottom:16px"></div>
           <div id="aesh-content"></div>
         </div>
 

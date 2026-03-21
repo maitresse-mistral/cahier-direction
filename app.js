@@ -1514,9 +1514,16 @@ function renderAeshFull(aeshList) {
               const slots = [0,1,3,4].map(d => {
                 const key = `ebp.aesh.${ai}.edt.${hKey}.${d}`;
                 const colorKey = `ebp.aesh.${ai}.edt.${hKey}.${d}_color`;
+                const savedText = getData(key) || '';
                 return `<div class="aesh-cell edt-slot" data-colorkey="${colorKey}"
-                  onclick="applyAeshColor(this,'${colorKey}')"
-                  style="cursor:pointer;position:relative;user-select:none;min-height:36px">
+                  style="cursor:default;position:relative;min-height:32px;padding:2px">
+                  <textarea rows="1" data-key="${key}"
+                    placeholder=""
+                    style="background:transparent;width:100%;resize:none;font-size:10px;line-height:1.3;border:none;cursor:text;font-family:var(--font);padding:2px"
+                    oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\';setData(\'${key}\',this.value);debounceSave()"
+                    onclick="event.stopPropagation()"
+                    oncontextmenu="event.preventDefault();applyAeshColor(this.closest(\'.edt-slot\'),\'${colorKey}\')"
+                  >${savedText}</textarea>
                 </div>`;
               }).join('');
               return `<div class="aesh-cell time">${h}</div>${slots}`;
@@ -1528,16 +1535,58 @@ function renderAeshFull(aeshList) {
 
   loadFormData();
   aeshList.forEach((_, ai) => loadAeshEleves(ai));
-  // Restore EDT cell colors
+  // Restaurer les couleurs des slots EDT
   document.querySelectorAll('.edt-slot[data-colorkey]').forEach(cell => {
-    const colorKey = cell.dataset.colorkey;
-    const color = getData(colorKey) || '';
-    if (color) {
-      cell.style.background = color + '55';
-      const picker = cell.querySelector('input[type=color]');
-      if (picker) picker.value = color;
-    }
+    const color = getData(cell.dataset.colorkey) || '';
+    if (color) cell.style.background = color + '99';
   });
+}
+
+function buildAeshSyncView() {
+  const wrap = document.getElementById('aesh-sync-view');
+  if (!wrap) return;
+  const aeshList = getData('ebp.aesh.list') || AESH_NOMS.map((n,i) => ({ id:i, nom:n }));
+  const JOURS = ['Lundi','Mardi','Jeudi','Vendredi'];
+  const PALETTE = ['#BBF7D0','#BFDBFE','#FDE68A','#FCA5A5','#E9D5FF','#FED7AA'];
+
+  // Basculer affichage
+  if (wrap.style.display !== 'none' && wrap.innerHTML) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  let html = `<div style="overflow-x:auto">
+    <table style="border-collapse:collapse;font-size:11px;min-width:600px">
+      <thead><tr>
+        <th style="padding:4px 8px;background:#FFF1F2;border:1px solid #FECACA;min-width:70px">Horaire</th>
+        ${JOURS.map(j => `<th colspan="${aeshList.length}" style="padding:4px 8px;background:#FDA4AF;border:1px solid #FECACA;text-align:center;font-weight:900">${j}</th>`).join('')}
+      </tr>
+      <tr>
+        <th style="background:#FFF1F2;border:1px solid #FECACA"></th>
+        ${JOURS.map(() => aeshList.map((a,ai) =>
+          `<th style="padding:3px 5px;background:${PALETTE[ai%PALETTE.length]}88;border:1px solid #FECACA;font-size:10px;font-weight:700;white-space:nowrap">${a.nom||'AESH '+(ai+1)}</th>`
+        ).join('')).join('')}
+      </tr></thead>
+      <tbody>`;
+
+  HORAIRES_AESH.forEach(h => {
+    const hKey = h.replace(/[^0-9h]/g,'_');
+    html += `<tr>
+      <td style="padding:3px 6px;background:#FFF1F2;border:1px solid #FECACA;font-size:10px;font-weight:700;white-space:nowrap">${h}</td>`;
+    [0,1,3,4].forEach(d => {
+      aeshList.forEach((a, ai) => {
+        const key = `ebp.aesh.${ai}.edt.${hKey}.${d}`;
+        const colorKey = `ebp.aesh.${ai}.edt.${hKey}.${d}_color`;
+        const text = getData(key) || '';
+        const color = getData(colorKey) || '';
+        const bg = color ? color + '88' : 'white';
+        html += `<td style="padding:3px 5px;border:1px solid #FECACA;background:${bg};min-width:70px;font-size:10px;vertical-align:top">${text}</td>`;
+      });
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table></div>
+    <div style="margin-top:8px;font-size:11px;color:#94A3B8">Cliquez à nouveau sur "Vue synchronisée" pour masquer</div>`;
+  wrap.innerHTML = html;
 }
 
 function addAeshAgent() {
@@ -2287,8 +2336,7 @@ function addReleveCol(ri) {
     [...body.querySelectorAll('tr')].forEach((tr, rowIndex) => {
       const delBtn = tr.querySelector('td.no-print');
       const td = document.createElement('td');
-      td.innerHTML = `<input type="text" value="" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))">`;
-      tr.insertBefore(td, delBtn);
+      td.innerHTML = `<input type="text" value="" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))" onkeydown="releveEnterKey(event,this)">`;      tr.insertBefore(td, delBtn);
     });
   }
   buildReleveHeaders(ri);
@@ -2331,13 +2379,31 @@ function addReleveRow(ri, nom='') {
   const savedCells = getData(`classe.releve${ri}.rows.${rowIndex}`) || Array(cols).fill('');
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td class="releve-name-cell"><input type="text" value="${nom}" placeholder="Nom Prénom…" style="width:100%;border:none;padding:6px 8px;font-weight:700;font-family:inherit;font-size:13px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))"></td>
+    <td class="releve-name-cell"><input type="text" value="${nom}" placeholder="Nom Prénom…" style="width:100%;border:none;padding:6px 8px;font-weight:700;font-family:inherit;font-size:13px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))" onkeydown="releveEnterKey(event,this)"></td>
     ${Array.from({length:cols},(_,ci) =>
-      `<td><input type="text" value="${savedCells[ci]||''}" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))"></td>`
+      `<td><input type="text" value="${savedCells[ci]||''}" style="width:50px;text-align:center;border:none;font-family:'Caveat',cursive;font-size:14px" onchange="saveReleveRow(${ri},${rowIndex},this.closest('tr'))" onkeydown="releveEnterKey(event,this)"></td>`
     ).join('')}
     <td class="no-print"><button class="delete-row-btn" onclick="this.closest('tr').remove()">×</button></td>
   `;
   body.appendChild(tr);
+}
+
+function releveEnterKey(e, input) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  // Trouver la même colonne dans la ligne suivante
+  const td = input.closest('td');
+  const tr = input.closest('tr');
+  const tbody = tr.closest('tbody');
+  if (!td || !tr || !tbody) return;
+  const colIdx = [...tr.querySelectorAll('td')].indexOf(td);
+  const rows = [...tbody.querySelectorAll('tr')];
+  const rowIdx = rows.indexOf(tr);
+  const nextRow = rows[rowIdx + 1];
+  if (nextRow) {
+    const nextInput = nextRow.querySelectorAll('td')[colIdx]?.querySelector('input');
+    if (nextInput) { nextInput.focus(); nextInput.select(); }
+  }
 }
 
 function saveReleveRow(ri, rowIndex, tr) {
@@ -2981,32 +3047,63 @@ function buildReunions() {
   const subtabs = document.getElementById('subtabs-reunions');
   const content  = document.getElementById('reunions-content');
   if (!subtabs || !content) return;
-
-  // Migration automatique des anciennes réunions (format r1…r15) → catégorie "autres"
   _migrateOldReunions();
-
-  // Onglets catégories
-  subtabs.innerHTML = REUNION_CATS.map((cat, i) => {
-    const count = _getReunionIds(cat.key).length;
-    return `<button class="subtab ${i===0?'active':''}" id="rcat-tab-${cat.key}"
-      onclick="showReunionCat('${cat.key}')">${cat.icon} ${cat.label} <span style="background:rgba(0,0,0,.1);border-radius:20px;padding:1px 7px;font-size:11px">${count}</span></button>`;
-  }).join('');
-
-  // Contenu de chaque catégorie
-  content.innerHTML = REUNION_CATS.map((cat, i) =>
-    `<div class="tab-content ${i===0?'active':'hidden'}" id="rcat-${cat.key}">
-      <div id="reunions-list-${cat.key}"></div>
-      <div style="padding:8px 0 16px">
-        <button onclick="addReunion('${cat.key}')"
-          style="background:${cat.color};border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:800;cursor:pointer;color:#1E3A5F">
-          + Ajouter une réunion</button>
-      </div>
-    </div>`
-  ).join('');
-
-  // Rendre chaque liste
+  subtabs.innerHTML =
+    `<button class="subtab active" id="rcat-tab-overview" onclick="showReunionCat('overview')">📋 Vue d'ensemble</button>` +
+    REUNION_CATS.map(cat => {
+      const count = _getReunionIds(cat.key).length;
+      return `<button class="subtab" id="rcat-tab-${cat.key}" onclick="showReunionCat('${cat.key}')">${cat.icon} ${cat.label} <span style="background:rgba(0,0,0,.1);border-radius:20px;padding:1px 7px;font-size:11px">${count}</span></button>`;
+    }).join('');
+  content.innerHTML =
+    `<div class="tab-content active" id="rcat-overview"><div id="reunions-overview"></div></div>` +
+    REUNION_CATS.map(cat =>
+      `<div class="tab-content hidden" id="rcat-${cat.key}">
+        <div id="reunions-list-${cat.key}"></div>
+        <div style="padding:8px 0 16px">
+          <button onclick="addReunion('${cat.key}')" style="background:${cat.color};border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:800;cursor:pointer;color:#1E3A5F">+ Ajouter une réunion</button>
+        </div>
+      </div>`
+    ).join('');
   REUNION_CATS.forEach(cat => _renderReunionList(cat.key));
+  _renderReunionsOverview();
   loadFormData();
+}
+
+function _renderReunionsOverview() {
+  const wrap = document.getElementById('reunions-overview');
+  if (!wrap) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  wrap.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;padding:4px 0">` +
+    REUNION_CATS.map(cat => {
+      const ids = _getReunionIds(cat.key);
+      const items = ids.map(n => ({
+        label: getData(`reunions.${cat.key}.r${n}.label`) || `Réunion ${n}`,
+        date:  getData(`reunions.${cat.key}.r${n}.date`) || '',
+        lieu:  getData(`reunions.${cat.key}.r${n}.lieu`) || '',
+        catKey: cat.key, n
+      })).sort((a,b) => !a.date ? 1 : !b.date ? -1 : a.date.localeCompare(b.date));
+      const rows = items.length ? items.map(r => {
+        const isPast = r.date && new Date(r.date) < today;
+        return `<div onclick="showReunionCat('${r.catKey}');setTimeout(()=>{ const el=document.getElementById('reunion-body-${r.catKey}-${r.n}'); if(el&&el.style.display==='none') toggleReunion('${r.catKey}',${r.n}); },150)"
+          style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:8px;background:${isPast?'#F8FAFC':'white'};margin-bottom:4px;cursor:pointer;opacity:${isPast?'.55':'1'};border:1px solid #F1F5F9" title="Cliquer pour ouvrir">
+          <span style="font-size:13px;margin-top:1px">${isPast?'✅':'📅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:#1E3A5F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
+            <div style="font-size:11px;color:#64748B">${r.date ? isoToFr(r.date) : '—'}${r.lieu?' · '+r.lieu:''}</div>
+          </div>
+        </div>`;
+      }).join('') : `<div style="text-align:center;padding:12px;color:#94A3B8;font-size:12px">Aucune réunion</div>`;
+      return `<div style="background:white;border:1.5px solid ${cat.color};border-radius:14px;overflow:hidden">
+        <div style="background:${cat.color};padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:900;font-size:14px;color:#1E3A5F">${cat.icon} ${cat.label}</span>
+          <span style="font-size:11px;background:rgba(255,255,255,.5);border-radius:10px;padding:2px 8px;font-weight:700">${ids.length} réunion${ids.length>1?'s':''}</span>
+        </div>
+        <div style="padding:10px">${rows}</div>
+        <div style="padding:0 10px 10px">
+          <button onclick="showReunionCat('${cat.key}')" style="width:100%;background:${cat.color}55;border:none;border-radius:8px;padding:6px;font-size:12px;font-weight:700;cursor:pointer;color:#1E3A5F">Voir / modifier →</button>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
 }
 
 function _getReunionIds(catKey) {
@@ -3090,6 +3187,7 @@ function showReunionCat(catKey) {
   document.getElementById(`rcat-${catKey}`)?.classList.remove('hidden');
   document.querySelectorAll('#subtabs-reunions .subtab').forEach(b =>
     b.classList.toggle('active', b.id === `rcat-tab-${catKey}`));
+  if (catKey === 'overview') _renderReunionsOverview();
 }
 
 function toggleReunion(catKey, n) {
@@ -3342,7 +3440,6 @@ function applyAeshColor(cell, colorKey) {
   const color = selectedAeshColor;
   if (!color) return;
   if (color === '__erase__') {
-    // Effacer : fond transparent + supprimer la donnée
     cell.style.background = 'transparent';
     setData(colorKey, '');
   } else {
