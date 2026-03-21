@@ -428,6 +428,7 @@
             <button class="subtab" onclick="showTab('classe','coop')">COOP</button>
             <button class="subtab" onclick="showTab('classe','projets')">PROJETS</button>
             <button class="subtab" onclick="showTab('classe','releves')">RELEVÉS</button>
+            <button class="subtab" onclick="showTab('classe','rdv')">RDV PARENTS</button>
           </div>
         </div>
 
@@ -522,7 +523,14 @@
             <button class="subtab-inner" onclick="showReleve(5)">Relevé 5</button>
           </div>
           <div id="releves-container"></div>
+        <div class="tab-content hidden" id="classe-rdv">
+          <h3>RDV Parents</h3>
+          <div class="import-bar">
+            <button class="btn-xs" onclick="addClasseRdvFiche()">+ Ajouter un RDV</button>
+          </div>
+          <div class="rdv-grid" id="classe-rdv-grid"></div>
         </div>
+
       </section>
 
     </main>

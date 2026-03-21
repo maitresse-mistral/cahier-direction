@@ -376,7 +376,7 @@ function showTab(section, tab) {
   if (section === 'admin' && tab === 'commandes') loadCommandeData(cmdCurrentYear);
   if (section === 'admin' && tab === 'effectifs') reloadEffectifsClasses();
   if (section === 'admin' && tab === 'docs') loadAdminDocs();
-  if (section === 'classe' && tab === 'docsadm') buildDocsAdmTable();
+  if (section === 'classe' && tab === 'rdv') buildClasseRdv();
   if (section === 'ebp' && tab === 'registre') loadEbpRows();
   if (section === 'ebp' && tab === 'soins') loadEbpSoinsRows();
   if (section === 'classe' && tab === 'autosorties') loadAutosortiesRows();
@@ -2202,6 +2202,72 @@ function importExcelToDocsAdm(input) {
 }
 
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+// RDV PARENTS — CLASSE
+// ══════════════════════════════════════
+function buildClasseRdv() {
+  const grid = document.getElementById('classe-rdv-grid');
+  if (!grid || grid.children.length > 0) return;
+  const saved = getData('classe.rdv') || [];
+  if (saved.length === 0) { for (let i = 0; i < 3; i++) addClasseRdvFicheFromData({ id: Date.now()+i, eleve:'', date:'', demande:'parents', cr:'' }); }
+  else saved.forEach(f => addClasseRdvFicheFromData(f));
+}
+
+function addClasseRdvFiche() {
+  addClasseRdvFicheFromData({ id: Date.now(), eleve:'', date:'', demande:'parents', cr:'' });
+  saveClasseRdvData();
+}
+
+function addClasseRdvFicheFromData(f) {
+  const grid = document.getElementById('classe-rdv-grid');
+  if (!grid) return;
+  const div = document.createElement('div');
+  div.className = 'rdv-fiche'; div.dataset.id = f.id;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;gap:4px">
+        <button onclick="moveClasseRdvFiche(this,'up')" title="Monter"
+          style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;cursor:pointer;color:#64748B;font-size:12px">↑</button>
+        <button onclick="moveClasseRdvFiche(this,'down')" title="Descendre"
+          style="background:none;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;cursor:pointer;color:#64748B;font-size:12px">↓</button>
+      </div>
+      <button class="rdv-delete" onclick="this.closest('.rdv-fiche').remove();saveClasseRdvData()">×</button>
+    </div>
+    <label>Élève</label><input type="text" value="${f.eleve||''}" placeholder="Nom &amp; Prénom" onchange="saveClasseRdvData()">
+    <label>Date</label><input type="text" placeholder="jj/mm/aaaa" value="${isoToFr(f.date||'')}" onchange="saveClasseRdvData()">
+    <label>Demandé par</label>
+    <div class="rdv-demande">
+      <label><input type="radio" name="crdv-dem-${f.id}" value="parents" ${f.demande!=='ecole'?'checked':''} onchange="saveClasseRdvData()"> Parents</label>
+      <label><input type="radio" name="crdv-dem-${f.id}" value="ecole" ${f.demande==='ecole'?'checked':''} onchange="saveClasseRdvData()"> École</label>
+    </div>
+    <label>Compte-rendu</label><textarea onchange="saveClasseRdvData()">${f.cr||''}</textarea>`;
+  grid.appendChild(div);
+}
+
+function saveClasseRdvData() {
+  const fiches = [...document.querySelectorAll('#classe-rdv-grid .rdv-fiche')].map(f => {
+    const texts = f.querySelectorAll('input[type=text]');
+    return {
+      id:      f.dataset.id,
+      eleve:   texts[0]?.value || '',
+      date:    frToIso(texts[1]?.value || '') || texts[1]?.value || '',
+      demande: f.querySelector('input[type=radio]:checked')?.value || 'parents',
+      cr:      f.querySelector('textarea')?.value || ''
+    };
+  });
+  setData('classe.rdv', fiches);
+  debounceSave();
+}
+
+function moveClasseRdvFiche(btn, dir) {
+  const fiche = btn.closest('.rdv-fiche');
+  const grid  = document.getElementById('classe-rdv-grid');
+  if (!fiche || !grid) return;
+  if (dir === 'up' && fiche.previousElementSibling) grid.insertBefore(fiche, fiche.previousElementSibling);
+  else if (dir === 'down' && fiche.nextElementSibling) grid.insertBefore(fiche.nextElementSibling, fiche);
+  saveClasseRdvData();
+}
+
 // COOP avec budget alloué
 // ══════════════════════════════════════
 function addCoopRow(data=null) {
