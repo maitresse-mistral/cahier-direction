@@ -1339,12 +1339,12 @@ function renderEbpSoinsEleve(container, eleve, ei) {
 
   div.innerHTML = `
     <div style="background:linear-gradient(135deg,#FCE7F3,#FDE8F0);padding:10px 14px;display:flex;align-items:center;gap:10px">
-      <input type="text" value="${eleve.nom||''}" placeholder="Nom Prénom…" 
+      <input type="text" data-field="nom" value="${eleve.nom||''}" placeholder="Nom Prénom…" 
         style="font-weight:800;font-size:13px;color:#1E3A5F;border:none;background:transparent;width:160px;border-bottom:2px solid #FDA4AF;padding:2px 4px"
-        onchange="saveEbpSoins()">
-      <input type="text" value="${eleve.classe||''}" placeholder="Classe"
+        oninput="saveEbpSoins()">
+      <input type="text" data-field="classe" value="${eleve.classe||''}" placeholder="Classe"
         style="font-size:12px;color:#64748B;border:none;background:transparent;width:50px;border-bottom:1.5px solid #FDA4AF;padding:2px 4px"
-        onchange="saveEbpSoins()">
+        oninput="saveEbpSoins()">
       <button onclick="addEbpSortie(${ei})" style="margin-left:auto;background:#FDA4AF;color:white;border:none;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">+ Sortie</button>
       <button class="delete-row-btn no-print" onclick="removeEbpEleve(${ei})">×</button>
     </div>
@@ -1416,11 +1416,8 @@ function saveEbpSoins() {
   const eleves = [];
   container.querySelectorAll('[data-ei]').forEach(div => {
     const ei = parseInt(div.dataset.ei);
-    // Le nom et la classe sont dans le header (premier div enfant)
-    const headerDiv = div.querySelector(':scope > div');
-    const headerInputs = headerDiv ? [...headerDiv.querySelectorAll('input[type=text]')] : [];
-    const nom    = headerInputs[0]?.value || '';
-    const classe = headerInputs[1]?.value || '';
+    const nom    = div.querySelector('[data-field="nom"]')?.value || '';
+    const classe = div.querySelector('[data-field="classe"]')?.value || '';
     const sorties = [];
     div.querySelectorAll('tbody tr').forEach(tr => {
       const checks = [...tr.querySelectorAll('input[type=checkbox]')];
