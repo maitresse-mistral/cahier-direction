@@ -2207,10 +2207,14 @@ function importExcelToDocsAdm(input) {
 // ══════════════════════════════════════
 function buildClasseRdv() {
   const grid = document.getElementById('classe-rdv-grid');
-  if (!grid || grid.children.length > 0) return;
+  if (!grid) return;
+  grid.innerHTML = ''; // toujours reconstruire
   const saved = getData('classe.rdv') || [];
-  if (saved.length === 0) { for (let i = 0; i < 3; i++) addClasseRdvFicheFromData({ id: Date.now()+i, eleve:'', date:'', demande:'parents', cr:'' }); }
-  else saved.forEach(f => addClasseRdvFicheFromData(f));
+  if (saved.length === 0) {
+    for (let i = 0; i < 3; i++) addClasseRdvFicheFromData({ id: Date.now()+i, eleve:'', date:'', demande:'parents', cr:'' });
+  } else {
+    saved.forEach(f => addClasseRdvFicheFromData(f));
+  }
 }
 
 function addClasseRdvFiche() {
