@@ -352,7 +352,7 @@ function gotoSection(key) {
     if (key === 'dashboard') buildDashboard();
   if (key === 'calend') showCalend('annuel');
     if (key === 'todo')   showTodo('rentree');
-    if (key === 'reunions') showReunionCat('maitres');
+    if (key === 'reunions') showReunionCat('overview');
     if (key === 'gen') { populateMaClasseSelect(); loadLogoPreview(); buildEnseignantsTable(); }
   }, 50);
 }
@@ -1189,10 +1189,20 @@ function addEbpRow(data=null) {
   const d = data || {};
   const classeOpts = getClasseOptions(d.classe||'');
   // Cases à cocher lecture seule avec couleur par type
-  const COLORS = { pai:'#EF4444', ess:'#F97316', ee:'#8B5CF6', ppre:'#3B82F6', pps:'#06B6D4', aesh:'#10B981', apc:'#F59E0B' };
+  const COLORS = {
+    pai:  '#EF4444',  // rouge  — PAI
+    ess:  '#F97316',  // orange — ESS
+    ee:   '#8B5CF6',  // violet — EE
+    ppre: '#3B82F6',  // bleu   — PPRE
+    pps:  '#06B6D4',  // cyan   — PPS
+    aesh: '#10B981',  // vert   — AESH
+    apc:  '#F59E0B'   // ambre  — APC
+  };
   const roCheck = (val, key) => val
-    ? `<input type="checkbox" checked disabled style="width:15px;height:15px;accent-color:${COLORS[key]||'#8B5CF6'};cursor:default;opacity:1">`
-    : `<input type="checkbox" disabled style="width:15px;height:15px;cursor:default;opacity:.25">`;
+    ? `<input type="checkbox" checked disabled
+        style="width:16px;height:16px;accent-color:${COLORS[key]||'#22C55E'};cursor:default;opacity:1;display:block;margin:0 auto">`
+    : `<input type="checkbox" disabled
+        style="width:16px;height:16px;cursor:default;opacity:.2;display:block;margin:0 auto">`;
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:130px;padding:8px 10px;border:none;font-weight:600" onchange="saveEbpRows()"></td>
     <td><select style="border:none;padding:6px 4px;font-family:var(--font);font-size:13px" onchange="saveEbpRows()">${classeOpts}</select></td>
@@ -1516,14 +1526,13 @@ function renderAeshFull(aeshList) {
                 const colorKey = `ebp.aesh.${ai}.edt.${hKey}.${d}_color`;
                 const savedText = getData(key) || '';
                 return `<div class="aesh-cell edt-slot" data-colorkey="${colorKey}"
-                  style="cursor:default;position:relative;min-height:32px;padding:2px">
+                  onclick="applyAeshColor(this,'${colorKey}')"
+                  style="cursor:pointer;position:relative;min-height:32px;padding:2px">
                   <textarea rows="1" data-key="${key}"
-                    placeholder=""
-                    style="background:transparent;width:100%;resize:none;font-size:10px;line-height:1.3;border:none;cursor:text;font-family:var(--font);padding:2px"
+                    style="background:transparent;width:100%;resize:none;font-size:10px;line-height:1.3;border:none;cursor:text;font-family:var(--font);padding:2px;pointer-events:auto"
                     oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\';setData(\'${key}\',this.value);debounceSave()"
                     onclick="event.stopPropagation()"
-                    oncontextmenu="event.preventDefault();applyAeshColor(this.closest(\'.edt-slot\'),\'${colorKey}\')"
-                  >${savedText}</textarea>
+                  >${getData(key)||''}</textarea>
                 </div>`;
               }).join('');
               return `<div class="aesh-cell time">${h}</div>${slots}`;
