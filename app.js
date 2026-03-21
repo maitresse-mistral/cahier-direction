@@ -1359,7 +1359,7 @@ function renderEbpSoinsEleve(container, eleve, ei) {
           <th style="font-size:11px">Observations</th>
           <th class="no-print"></th>
         </tr></thead>
-        <tbody data-ei="${ei}">${sortiesHTML}</tbody>
+        <tbody data-tbody-ei="${ei}">${sortiesHTML}</tbody>
       </table>
     </div>`;
   container.appendChild(div);
@@ -1414,7 +1414,8 @@ function saveEbpSoins() {
   const container = document.getElementById('ebp-soins-container');
   if (!container) return;
   const eleves = [];
-  container.querySelectorAll('[data-ei]').forEach(div => {
+  // Sélectionner uniquement les DIV avec data-ei (pas les tbody qui ont aussi data-ei)
+  container.querySelectorAll('div[data-ei]').forEach(div => {
     const ei = parseInt(div.dataset.ei);
     const nom    = div.querySelector('[data-field="nom"]')?.value || '';
     const classe = div.querySelector('[data-field="classe"]')?.value || '';
