@@ -1190,19 +1190,20 @@ function addEbpRow(data=null) {
   const classeOpts = getClasseOptions(d.classe||'');
   // Cases à cocher lecture seule avec couleur par type
   const COLORS = {
-    pai:  '#EF4444',  // rouge  — PAI
-    ess:  '#F97316',  // orange — ESS
-    ee:   '#8B5CF6',  // violet — EE
-    ppre: '#3B82F6',  // bleu   — PPRE
-    pps:  '#06B6D4',  // cyan   — PPS
-    aesh: '#10B981',  // vert   — AESH
-    apc:  '#F59E0B'   // ambre  — APC
+    pai:  { bg:'#FEE2E2', border:'#EF4444', text:'#991B1B', symbol:'✓' },
+    ess:  { bg:'#FFEDD5', border:'#F97316', text:'#9A3412', symbol:'✓' },
+    ee:   { bg:'#EDE9FE', border:'#8B5CF6', text:'#5B21B6', symbol:'✓' },
+    ppre: { bg:'#DBEAFE', border:'#3B82F6', text:'#1E40AF', symbol:'✓' },
+    pps:  { bg:'#CFFAFE', border:'#06B6D4', text:'#0E7490', symbol:'✓' },
+    aesh: { bg:'#D1FAE5', border:'#10B981', text:'#065F46', symbol:'✓' },
+    apc:  { bg:'#FEF3C7', border:'#F59E0B', text:'#92400E', symbol:'✓' }
   };
-  const roCheck = (val, key) => val
-    ? `<input type="checkbox" checked disabled
-        style="width:16px;height:16px;accent-color:${COLORS[key]||'#22C55E'};cursor:default;opacity:1;display:block;margin:0 auto">`
-    : `<input type="checkbox" disabled
-        style="width:16px;height:16px;cursor:default;opacity:.2;display:block;margin:0 auto">`;
+  const roCheck = (val, key) => {
+    const c = COLORS[key] || { bg:'#D1FAE5', border:'#10B981', text:'#065F46' };
+    return val
+      ? `<div style="width:20px;height:20px;border-radius:4px;background:${c.bg};border:2px solid ${c.border};display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:13px;font-weight:900;color:${c.text}">${c.symbol}</div>`
+      : `<div style="width:20px;height:20px;border-radius:4px;background:#F8FAFC;border:1.5px solid #E2E8F0;margin:0 auto"></div>`;
+  };
   tr.innerHTML = `
     <td><input type="text" value="${d.nom||''}" placeholder="Nom Prénom…" style="min-width:130px;padding:8px 10px;border:none;font-weight:600" onchange="saveEbpRows()"></td>
     <td><select style="border:none;padding:6px 4px;font-family:var(--font);font-size:13px" onchange="saveEbpRows()">${classeOpts}</select></td>
@@ -1415,13 +1416,15 @@ function saveEbpSoins() {
   const eleves = [];
   container.querySelectorAll('[data-ei]').forEach(div => {
     const ei = parseInt(div.dataset.ei);
-    const headerInputs = div.querySelectorAll(':scope > div input');
+    // Le nom et la classe sont dans le header (premier div enfant)
+    const headerDiv = div.querySelector(':scope > div');
+    const headerInputs = headerDiv ? [...headerDiv.querySelectorAll('input[type=text]')] : [];
     const nom    = headerInputs[0]?.value || '';
     const classe = headerInputs[1]?.value || '';
     const sorties = [];
     div.querySelectorAll('tbody tr').forEach(tr => {
       const checks = [...tr.querySelectorAll('input[type=checkbox]')];
-      const jours  = checks.filter(c=>c.checked).map((_,i)=>JOURS_SOINS[i]);
+      const jours  = JOURS_SOINS.filter((_,i) => checks[i]?.checked);
       const texts  = [...tr.querySelectorAll('input[type=text]')];
       sorties.push({ jours, hsortie:texts[0]?.value||'', hretour:texts[1]?.value||'',
         motif:texts[2]?.value||'', resp:texts[3]?.value||'', obs:texts[4]?.value||'' });
