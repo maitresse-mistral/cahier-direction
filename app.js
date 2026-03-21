@@ -2208,7 +2208,8 @@ function importExcelToDocsAdm(input) {
 function buildClasseRdv() {
   const grid = document.getElementById('classe-rdv-grid');
   if (!grid) return;
-  grid.innerHTML = ''; // toujours reconstruire
+  // Ne reconstruire que si le grid est vide
+  if (grid.children.length > 0) return;
   const saved = getData('classe.rdv') || [];
   if (saved.length === 0) {
     for (let i = 0; i < 3; i++) addClasseRdvFicheFromData({ id: Date.now()+i, eleve:'', date:'', demande:'parents', cr:'' });
@@ -2244,7 +2245,7 @@ function addClasseRdvFicheFromData(f) {
       <label><input type="radio" name="crdv-dem-${f.id}" value="parents" ${f.demande!=='ecole'?'checked':''} onchange="saveClasseRdvData()"> Parents</label>
       <label><input type="radio" name="crdv-dem-${f.id}" value="ecole" ${f.demande==='ecole'?'checked':''} onchange="saveClasseRdvData()"> École</label>
     </div>
-    <label>Compte-rendu</label><textarea onchange="saveClasseRdvData()">${f.cr||''}</textarea>`;
+    <label>Compte-rendu</label><textarea oninput="saveClasseRdvData()">${f.cr||''}</textarea>`;
   grid.appendChild(div);
 }
 
