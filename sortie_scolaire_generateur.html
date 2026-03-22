@@ -11,7 +11,7 @@
     --or: #c9922a; --or-clair: #f5d98f;
     --fond: #f4f1eb; --blanc: #fffef9;
     --gris: #6b6b72; --gris-clair: #e8e4dc;
-    --rouge: #b03030;
+    --rouge: #b03030; --vert: #2e7d52;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Source Sans 3', sans-serif; background: var(--fond); color: var(--bleu); min-height: 100vh; }
@@ -48,7 +48,6 @@
     background: var(--blanc); user-select: none; transition: background 0.15s;
   }
   .sortie-header:hover { background: #f0ece4; }
-
   .sortie-num {
     width: 24px; height: 24px; border-radius: 50%;
     background: var(--bleu); color: white;
@@ -57,9 +56,14 @@
   }
   .sortie-label { flex: 1; font-size: 0.88rem; font-weight: 600; color: var(--bleu); }
   .sortie-label span { font-weight: 400; color: var(--gris); font-size: 0.8rem; }
+  .sortie-badge {
+    font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge-simple { background: #ddeeff; color: var(--bleu-clair); }
+  .badge-recurrent { background: #e0f5ea; color: var(--vert); }
   .sortie-chevron { font-size: 0.7rem; color: var(--gris); transition: transform 0.2s; }
   .sortie-card.open .sortie-chevron { transform: rotate(180deg); }
-
   .btn-del-sortie {
     background: none; border: none; cursor: pointer;
     color: var(--gris); font-size: 1rem; padding: 2px 4px;
@@ -69,6 +73,19 @@
 
   .sortie-body { display: none; padding: 14px 16px 16px; border-top: 1px solid var(--gris-clair); background: #fafaf7; }
   .sortie-card.open .sortie-body { display: block; }
+
+  /* TYPE SELECTOR */
+  .type-selector {
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+  .type-btn {
+    flex: 1; padding: 7px 10px; border-radius: 7px; border: 2px solid var(--gris-clair);
+    background: var(--blanc); font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    color: var(--gris); text-align: center;
+  }
+  .type-btn.active-simple { border-color: var(--bleu-clair); background: #ddeeff; color: var(--bleu-clair); }
+  .type-btn.active-recurrent { border-color: var(--vert); background: #e0f5ea; color: var(--vert); }
 
   /* champs */
   .field { margin-bottom: 11px; }
@@ -83,11 +100,35 @@
     color: var(--bleu); background: var(--fond);
     transition: border-color 0.2s, box-shadow 0.2s; outline: none;
   }
-  input:focus, textarea:focus { border-color: var(--bleu-clair); box-shadow: 0 0 0 3px rgba(45,106,159,0.12); }
+  input:focus, textarea:focus, select:focus { border-color: var(--bleu-clair); box-shadow: 0 0 0 3px rgba(45,106,159,0.12); }
   textarea { resize: vertical; min-height: 50px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
 
+  /* DATES RECURRENTES */
+  .dates-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .date-row {
+    display: grid; grid-template-columns: 1fr 80px 80px 28px; gap: 6px; align-items: center;
+    background: var(--fond); border-radius: 6px; padding: 6px 8px;
+    border: 1px solid var(--gris-clair);
+  }
+  .date-row label { font-size: 0.67rem; color: var(--gris); margin-bottom: 2px; }
+  .btn-del-date {
+    background: none; border: none; cursor: pointer; color: var(--gris);
+    font-size: 0.85rem; border-radius: 4px; padding: 3px;
+    transition: color 0.15s, background 0.15s; line-height: 1; width: 100%; text-align: center;
+  }
+  .btn-del-date:hover { color: var(--rouge); background: #fde8e8; }
+  .btn-add-date {
+    padding: 6px 10px; background: var(--blanc); color: var(--vert);
+    border: 1.5px dashed var(--vert); border-radius: 6px;
+    font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-add-date:hover { background: var(--vert); color: white; border-style: solid; }
+
+  /* opts */
   .opts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
   .opts-label { font-size: 0.7rem; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
   .toggle-row { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; }
@@ -138,20 +179,9 @@
   #doc-output { display: none; }
   #doc-output.visible { display: block; }
 
-  /* ══ APERÇU ÉCRAN : grille 2 colonnes ══ */
-  .doc-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
-  /* séparateur vertical entre les 2 colonnes */
-  .doc-grid .doc-wrap:nth-child(odd) {
-    border-right: 1.5px dashed #ccc;
-  }
-  /* séparateur horizontal entre les lignes */
-  .doc-grid .doc-wrap:nth-child(n+3) {
-    border-top: 1.5px dashed #ccc;
-  }
+  .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .doc-grid .doc-wrap:nth-child(odd) { border-right: 1.5px dashed #ccc; }
+  .doc-grid .doc-wrap:nth-child(n+3) { border-top: 1.5px dashed #ccc; }
 
   /* ══ DOCUMENT ══ */
   .doc-wrap {
@@ -159,25 +189,16 @@
     font-family: Georgia, 'Times New Roman', serif;
     font-size: 0.76rem; line-height: 1.42; color: #111;
   }
-  .doc-top {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    border-bottom: 2px solid #1a3a5c; padding-bottom: 5px; margin-bottom: 7px;
-  }
+  .doc-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a3a5c; padding-bottom: 5px; margin-bottom: 7px; }
   .doc-school { font-size: 0.82rem; font-weight: 700; color: #1a3a5c; }
   .doc-date-meta { font-size: 0.68rem; color: #555; text-align: right; }
   .doc-titre { text-align: center; font-weight: 700; font-size: 0.82rem; text-decoration: underline; margin-bottom: 6px; color: #1a3a5c; }
   .doc-corps p { margin-bottom: 3px; }
-  .doc-infos {
-    margin: 5px 0; background: #eef2f7; border-left: 3px solid #2d6a9f;
-    padding: 4px 8px; font-size: 0.73rem; display: flex; flex-wrap: wrap; gap: 1px 14px;
-  }
+  .doc-infos { margin: 5px 0; background: #eef2f7; border-left: 3px solid #2d6a9f; padding: 4px 8px; font-size: 0.73rem; display: flex; flex-wrap: wrap; gap: 1px 14px; }
   .doc-infos strong { color: #1a3a5c; }
   .doc-sign { margin-top: 5px; font-size: 0.74rem; }
 
-  .coupon {
-    margin-top: 7px; border: 1.2px dashed #888; border-radius: 4px;
-    padding: 6px 10px; background: #fafafa; font-size: 0.72rem;
-  }
+  .coupon { margin-top: 7px; border: 1.2px dashed #888; border-radius: 4px; padding: 6px 10px; background: #fafafa; font-size: 0.72rem; }
   .coupon-titre { font-weight: 700; font-size: 0.69rem; text-transform: uppercase; letter-spacing: 0.05em; color: #1a3a5c; margin-bottom: 5px; }
   .coupon-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; margin-bottom: 4px; }
   .cf-label { font-size: 0.62rem; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -189,7 +210,6 @@
   .coupon-sign { display: flex; gap: 10px; margin-top: 5px; }
   .cs-field { flex: 1; border-bottom: 1px solid #999; font-size: 0.66rem; color: #666; min-height: 16px; }
 
-  /* ══ PRINT ══ */
   @media print {
     body { background: white; }
     header, .left-col, .preview-actions, #preview-placeholder { display: none !important; }
@@ -197,31 +217,10 @@
     .preview-panel { display: block; position: static; }
     #preview-zone { box-shadow: none; border: none; border-radius: 0; }
     #doc-output { display: block !important; }
-
-    /* grille 2 col sur la page A4 */
-    .doc-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
-      width: 100%;
-    }
-
-    .doc-wrap {
-      /* chaque cellule ne se coupe jamais */
-      break-inside: avoid;
-      page-break-inside: avoid;
-      padding: 6mm 7mm 5mm;
-    }
-
-    /* séparateur vertical */
-    .doc-grid .doc-wrap:nth-child(odd) {
-      border-right: 1px dashed #aaa;
-    }
-    /* séparateur horizontal entre rangées */
-    .doc-grid .doc-wrap:nth-child(n+3) {
-      border-top: 1px dashed #aaa;
-    }
-
+    .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; width: 100%; }
+    .doc-wrap { break-inside: avoid; page-break-inside: avoid; padding: 6mm 7mm 5mm; }
+    .doc-grid .doc-wrap:nth-child(odd) { border-right: 1px dashed #aaa; }
+    .doc-grid .doc-wrap:nth-child(n+3) { border-top: 1px dashed #aaa; }
     @page { size: A4 landscape; margin: 8mm 12mm; }
   }
 </style>
@@ -237,7 +236,6 @@
 </header>
 
 <div class="container">
-
   <div class="left-col">
     <div class="panel" id="sorties-list"></div>
     <button class="btn-add" onclick="ajouterSortie()">＋ Ajouter une sortie</button>
@@ -257,28 +255,41 @@
       <div id="doc-output"></div>
     </div>
   </div>
-
 </div>
 
 <script>
 let compteur = 0;
+// dateCompteur par sortie : stocké dans un objet
+const dateCompteurs = {};
 
 function ajouterSortie() {
   compteur++;
   const id = compteur;
+  dateCompteurs[id] = 0;
   const list = document.getElementById('sorties-list');
 
   const card = document.createElement('div');
   card.className = 'sortie-card open';
   card.id = 'card-' + id;
+  card.dataset.type = 'simple';
+
   card.innerHTML = `
     <div class="sortie-header" onclick="toggleCard(${id})">
       <div class="sortie-num">${id}</div>
       <div class="sortie-label">Sortie ${id} <span id="label-${id}"></span></div>
+      <span class="sortie-badge badge-simple" id="badge-${id}">Unique</span>
       <span class="sortie-chevron">▲</span>
       <button class="btn-del-sortie" title="Supprimer" onclick="supprimerSortie(event,${id})">✕</button>
     </div>
     <div class="sortie-body">
+
+      <!-- TYPE -->
+      <div class="type-selector">
+        <button class="type-btn active-simple" id="btn-simple-${id}" onclick="setType(${id},'simple')">📅 Sortie unique</button>
+        <button class="type-btn" id="btn-recurrent-${id}" onclick="setType(${id},'recurrent')">🔁 Sortie récurrente</button>
+      </div>
+
+      <!-- CHAMPS COMMUNS -->
       <div class="row2">
         <div class="field">
           <label>École</label>
@@ -291,31 +302,44 @@ function ajouterSortie() {
       </div>
       <div class="field">
         <label>Destination / Lieu</label>
-        <input type="text" id="lieu-${id}" placeholder="ex. Musée Fabre, Montpellier" oninput="updateLabel(${id})"/>
+        <input type="text" id="lieu-${id}" placeholder="ex. Piscine municipale" oninput="updateLabel(${id})"/>
       </div>
       <div class="field">
         <label>Objet de la sortie</label>
-        <input type="text" id="objet-${id}" placeholder="ex. Visite guidée – Exposition Antiquité" oninput="updateLabel(${id})"/>
+        <input type="text" id="objet-${id}" placeholder="ex. Séances de natation" oninput="updateLabel(${id})"/>
       </div>
-      <div class="row3">
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="date-${id}" oninput="updateLabel(${id})"/>
-        </div>
-        <div class="field">
-          <label>Départ</label>
-          <input type="time" id="dep-${id}" value="08:30"/>
-        </div>
-        <div class="field">
-          <label>Retour</label>
-          <input type="time" id="ret-${id}" value="16:30"/>
+
+      <!-- ZONE SORTIE SIMPLE -->
+      <div id="zone-simple-${id}">
+        <div class="row3">
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="date-${id}" oninput="updateLabel(${id})"/>
+          </div>
+          <div class="field">
+            <label>Départ</label>
+            <input type="time" id="dep-${id}" value="08:30"/>
+          </div>
+          <div class="field">
+            <label>Retour</label>
+            <input type="time" id="ret-${id}" value="16:30"/>
+          </div>
         </div>
       </div>
-      <div class="field">
+
+      <!-- ZONE SORTIE RÉCURRENTE -->
+      <div id="zone-recurrent-${id}" style="display:none">
+        <div class="opts-label" style="margin-bottom:6px">Dates des séances</div>
+        <div class="dates-list" id="dates-list-${id}"></div>
+        <button class="btn-add-date" onclick="ajouterDate(${id})">＋ Ajouter une date</button>
+      </div>
+
+      <!-- SUITE COMMUNE -->
+      <div class="field" style="margin-top:11px">
         <label>Message complémentaire (facultatif)</label>
         <textarea id="extra-${id}" placeholder="Informations supplémentaires…"></textarea>
       </div>
-      <div class="field" style="margin-bottom:11px">
+      <div class="field">
         <label>Signataire</label>
         <select id="signataire-${id}">
           <option value="La directrice">La directrice</option>
@@ -348,6 +372,58 @@ function ajouterSortie() {
   list.appendChild(card);
 }
 
+function setType(id, type) {
+  const card = document.getElementById('card-' + id);
+  card.dataset.type = type;
+
+  document.getElementById('zone-simple-' + id).style.display    = type === 'simple'    ? '' : 'none';
+  document.getElementById('zone-recurrent-' + id).style.display = type === 'recurrent' ? '' : 'none';
+
+  const btnS = document.getElementById('btn-simple-' + id);
+  const btnR = document.getElementById('btn-recurrent-' + id);
+  btnS.className = 'type-btn' + (type === 'simple' ? ' active-simple' : '');
+  btnR.className = 'type-btn' + (type === 'recurrent' ? ' active-recurrent' : '');
+
+  const badge = document.getElementById('badge-' + id);
+  badge.textContent = type === 'simple' ? 'Unique' : 'Récurrente';
+  badge.className = 'sortie-badge ' + (type === 'simple' ? 'badge-simple' : 'badge-recurrent');
+
+  // Ajouter une première date si la liste est vide
+  if (type === 'recurrent' && document.getElementById('dates-list-' + id).children.length === 0) {
+    ajouterDate(id);
+  }
+}
+
+function ajouterDate(sortieId) {
+  dateCompteurs[sortieId] = (dateCompteurs[sortieId] || 0) + 1;
+  const did = dateCompteurs[sortieId];
+  const list = document.getElementById('dates-list-' + sortieId);
+
+  const row = document.createElement('div');
+  row.className = 'date-row';
+  row.id = `drow-${sortieId}-${did}`;
+  row.innerHTML = `
+    <div class="field" style="margin:0">
+      <label>Date</label>
+      <input type="date" id="ddate-${sortieId}-${did}" oninput="updateLabel(${sortieId})"/>
+    </div>
+    <div class="field" style="margin:0">
+      <label>Départ</label>
+      <input type="time" id="ddep-${sortieId}-${did}" value="08:30"/>
+    </div>
+    <div class="field" style="margin:0">
+      <label>Retour</label>
+      <input type="time" id="dret-${sortieId}-${did}" value="16:30"/>
+    </div>
+    <button class="btn-del-date" onclick="supprimerDate(${sortieId},${did})" title="Supprimer">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+function supprimerDate(sortieId, did) {
+  document.getElementById(`drow-${sortieId}-${did}`)?.remove();
+}
+
 function toggleCard(id) {
   document.getElementById('card-' + id).classList.toggle('open');
 }
@@ -370,13 +446,24 @@ function renumeroter() {
 
 function updateLabel(id) {
   const lieu = document.getElementById('lieu-' + id)?.value || '';
-  const date = document.getElementById('date-' + id)?.value || '';
   const span = document.getElementById('label-' + id);
   if (!span) return;
+  const card = document.getElementById('card-' + id);
+  const type = card?.dataset.type || 'simple';
   let txt = lieu;
-  if (date) {
-    const d = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
-    txt += (txt ? ' · ' : '') + d;
+  if (type === 'simple') {
+    const date = document.getElementById('date-' + id)?.value || '';
+    if (date) {
+      const d = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+      txt += (txt ? ' · ' : '') + d;
+    }
+  } else {
+    // Première date de la liste
+    const firstDate = document.querySelector(`#dates-list-${id} input[type="date"]`);
+    if (firstDate?.value) {
+      const d = new Date(firstDate.value + 'T12:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+      txt += (txt ? ' · ' : '') + d + '…';
+    }
   }
   span.textContent = txt ? '— ' + txt : '';
 }
@@ -386,40 +473,102 @@ function fmt(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 }
 
+function fmtCourt(d) {
+  if (!d) return '___';
+  return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'long' });
+}
+
 function genererBloc(id) {
+  const card = document.getElementById('card-' + id);
+  const type = card?.dataset.type || 'simple';
+
   const ecole      = document.getElementById('school-' + id)?.value || 'Notre école';
   const classe     = document.getElementById('classe-' + id)?.value || '___';
   const lieu       = document.getElementById('lieu-' + id)?.value || '___';
   const objet      = document.getElementById('objet-' + id)?.value || '___';
-  const dateSortie = fmt(document.getElementById('date-' + id)?.value);
-  const hDep       = document.getElementById('dep-' + id)?.value || '__h__';
-  const hRet       = document.getElementById('ret-' + id)?.value || '__h__';
   const msgExtra   = document.getElementById('extra-' + id)?.value || '';
+  const signataire = document.getElementById('signataire-' + id)?.value || 'La directrice';
 
-  const optAccomp   = document.getElementById('accomp-' + id)?.checked;
-  const signataire    = document.getElementById('signataire-' + id)?.value || 'La directrice';
+  const optAccomp    = document.getElementById('accomp-' + id)?.checked;
   const optPiqueNique = document.getElementById('pique-nique-' + id)?.checked;
-  const optAllergie = document.getElementById('allergie-' + id)?.checked;
-  const optUrgence  = document.getElementById('urgence-' + id)?.checked;
+  const optAllergie  = document.getElementById('allergie-' + id)?.checked;
+  const optUrgence   = document.getElementById('urgence-' + id)?.checked;
 
   const today = new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
 
-  const txtPiqueNique = optPiqueNique
-    ? `<p>🧺 <strong>Pique-nique à prévoir</strong> pour cette sortie.</p>`
-    : '';
-  const txtAccomp = optAccomp
-    ? `<p>Si vous êtes disponible pour accompagner cette sortie, merci de l'indiquer dans le coupon ci-dessous.</p>`
-    : '';
+  // ── Infos date(s)
+  let infosDates = '';
+  let infosHoraires = '';
+  let txtIntro = '';
+
+  if (type === 'simple') {
+    const dateSortie = fmt(document.getElementById('date-' + id)?.value);
+    const hDep = document.getElementById('dep-' + id)?.value || '__h__';
+    const hRet = document.getElementById('ret-' + id)?.value || '__h__';
+    infosDates   = `<span><strong>Date :</strong> ${dateSortie}</span>`;
+    infosHoraires = `<span><strong>Départ :</strong> ${hDep} · <strong>Retour :</strong> ${hRet}</span>`;
+    txtIntro = `<p>Nous avons le plaisir de vous informer qu'une <strong>sortie scolaire</strong> est organisée pour la classe de <strong>${classe}</strong>.</p>`;
+  } else {
+    // Récurrent : collecter toutes les dates
+    const rows = document.querySelectorAll(`#dates-list-${id} .date-row`);
+    const dateItems = [];
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const d = inputs[0]?.value || '';
+      const dep = inputs[1]?.value || '__h__';
+      const ret = inputs[2]?.value || '__h__';
+      if (d) dateItems.push({ d, dep, ret });
+    });
+
+    if (dateItems.length === 0) {
+      infosDates = `<span><strong>Dates :</strong> à définir</span>`;
+    } else if (dateItems.length === 1) {
+      infosDates = `<span><strong>Date :</strong> ${fmt(dateItems[0].d)}</span>`;
+      infosHoraires = `<span><strong>Départ :</strong> ${dateItems[0].dep} · <strong>Retour :</strong> ${dateItems[0].ret}</span>`;
+    } else {
+      // Vérifier si même horaire pour toutes les dates
+      const memeHoraire = dateItems.every(di => di.dep === dateItems[0].dep && di.ret === dateItems[0].ret);
+      if (memeHoraire) {
+        infosHoraires = `<span><strong>Horaires :</strong> ${dateItems[0].dep} → ${dateItems[0].ret}</span>`;
+      }
+      const listeDates = dateItems.map(di => fmtCourt(di.d) + (memeHoraire ? '' : ` (${di.dep}–${di.ret})`)).join(', ');
+      infosDates = `<span><strong>Dates :</strong> ${listeDates}</span>`;
+    }
+    txtIntro = `<p>Nous avons le plaisir de vous informer qu'une <strong>sortie scolaire récurrente</strong> est organisée pour la classe de <strong>${classe}</strong>.</p>`;
+  }
+
+  const txtPiqueNique = optPiqueNique ? `<p>🧺 <strong>Pique-nique à prévoir</strong> pour cette sortie.</p>` : '';
+  const txtAccomp = optAccomp ? `<p>Si vous êtes disponible pour accompagner l'une de ces séances, merci de l'indiquer dans le coupon ci-dessous.</p>` : '';
   const txtExtra = msgExtra ? `<p>${msgExtra.replace(/\n/g,'<br>')}</p>` : '';
 
-  const coupAccomp = optAccomp ? `
-    <div class="coupon-sep"></div>
-    <div style="font-weight:600;margin-bottom:2px">Accompagnement</div>
-    <div class="checks">
-      <div class="check-item"><span class="cb"></span> Je souhaite accompagner la sortie.</div>
-      <div class="check-item"><span class="cb"></span> Je ne suis pas disponible ce jour.</div>
-
-    </div>` : '';
+  // ── Coupon accompagnement
+  let coupAccomp = '';
+  if (optAccomp) {
+    if (type === 'simple') {
+      coupAccomp = `
+        <div class="coupon-sep"></div>
+        <div style="font-weight:600;margin-bottom:2px">Accompagnement</div>
+        <div class="checks">
+          <div class="check-item"><span class="cb"></span> Je souhaite accompagner la sortie.</div>
+          <div class="check-item"><span class="cb"></span> Je ne suis pas disponible ce jour.</div>
+        </div>`;
+    } else {
+      // Une case par date
+      const rows = document.querySelectorAll(`#dates-list-${id} .date-row`);
+      let casesHTML = '';
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const d = inputs[0]?.value || '';
+        if (d) casesHTML += `<div class="check-item"><span class="cb"></span> ${fmtCourt(d)}</div>`;
+      });
+      if (casesHTML) {
+        coupAccomp = `
+          <div class="coupon-sep"></div>
+          <div style="font-weight:600;margin-bottom:2px">Je suis disponible pour accompagner le(s) :</div>
+          <div class="checks">${casesHTML}</div>`;
+      }
+    }
+  }
 
   const coupAllergie = optAllergie ? `
     <div class="coupon-sep"></div>
@@ -439,12 +588,12 @@ function genererBloc(id) {
   <div class="doc-titre">Sortie scolaire – ${objet}</div>
   <div class="doc-corps">
     <p>Chers parents,</p>
-    <p>Nous avons le plaisir de vous informer qu'une <strong>sortie scolaire</strong> est organisée pour la classe de <strong>${classe}</strong>.</p>
+    ${txtIntro}
   </div>
   <div class="doc-infos">
-    <span><strong>Date :</strong> ${dateSortie}</span>
+    ${infosDates}
     <span><strong>Lieu :</strong> ${lieu}</span>
-    <span><strong>Départ :</strong> ${hDep} · <strong>Retour :</strong> ${hRet}</span>
+    ${infosHoraires}
   </div>
   <div class="doc-corps">
     ${txtPiqueNique}${txtAccomp}${txtExtra}
@@ -474,12 +623,8 @@ function genererBloc(id) {
 function generer() {
   const cards = document.querySelectorAll('.sortie-card');
   if (cards.length === 0) { alert('Ajoutez au moins une sortie !'); return; }
-
   let blocs = '';
-  cards.forEach(card => {
-    blocs += genererBloc(card.id.replace('card-', ''));
-  });
-
+  cards.forEach(card => { blocs += genererBloc(card.id.replace('card-', '')); });
   document.getElementById('preview-placeholder').style.display = 'none';
   const out = document.getElementById('doc-output');
   out.classList.add('visible');
