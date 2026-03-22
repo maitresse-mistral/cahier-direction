@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mode d'emploi – Générateur Sorties Scolaires</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #E8782A; --bleu: #1a3a5c; --bleu-clair: #2d6a9f;
+    --vert: #2e7d52; --fond: #FFF8F3; --blanc: #ffffff;
+    --gris: #f0ece6; --texte: #2c1a0e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--fond); color: var(--texte); min-height: 100vh; padding-bottom: 60px; }
+
+  header {
+    background: var(--orange); color: white;
+    padding: 28px 40px 24px; text-align: center; position: relative; overflow: hidden;
+  }
+  header::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 12px);
+  }
+  header .emoji { font-size: 3rem; display: block; margin-bottom: 8px; }
+  header h1 { font-family: 'Baloo 2', cursive; font-size: 1.8rem; font-weight: 800; line-height: 1.2; position: relative; }
+  header p { font-size: 0.95rem; opacity: 0.88; margin-top: 6px; font-weight: 600; position: relative; }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px; }
+
+  .intro {
+    background: white; border-radius: 14px; padding: 20px 24px; margin-bottom: 28px;
+    border-left: 5px solid var(--orange); box-shadow: 0 2px 12px rgba(232,120,42,0.08);
+    font-size: 0.95rem; line-height: 1.6;
+  }
+  .intro strong { color: var(--orange); }
+
+  h2.section {
+    font-family: 'Baloo 2', cursive; font-size: 1.1rem; font-weight: 800;
+    color: var(--bleu); margin: 28px 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2.section::after { content: ''; flex: 1; height: 2px; background: var(--gris); border-radius: 2px; }
+
+  .etapes { display: flex; flex-direction: column; gap: 14px; }
+
+  .etape {
+    background: white; border-radius: 14px; padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .etape-num {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--orange); color: white;
+    font-family: 'Baloo 2', cursive; font-size: 1.1rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(232,120,42,0.3);
+  }
+  .etape-num.vert { background: var(--vert); box-shadow: 0 3px 10px rgba(46,125,82,0.3); }
+  .etape-content h3 { font-family: 'Baloo 2', cursive; font-size: 0.98rem; font-weight: 700; color: var(--bleu); margin-bottom: 4px; }
+  .etape-content p { font-size: 0.87rem; line-height: 1.55; color: #444; margin-bottom: 3px; }
+
+  .tag {
+    display: inline-block; background: var(--gris); border-radius: 6px;
+    padding: 2px 8px; font-size: 0.76rem; font-weight: 700; color: var(--bleu); margin: 2px 2px 0;
+  }
+  .tag.orange { background: #fff0e6; color: var(--orange); }
+  .tag.vert { background: #e0f5ea; color: var(--vert); }
+  .tag.bleu { background: #ddeeff; color: var(--bleu-clair); }
+
+  .encart {
+    background: white; border-radius: 14px; padding: 18px 20px; margin-top: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .encart h3 { font-family: 'Baloo 2', cursive; font-size: 0.95rem; font-weight: 700; color: var(--bleu); margin-bottom: 10px; }
+  .option-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 0.86rem; line-height: 1.5; }
+  .option-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+  .option-row strong { color: var(--bleu); }
+
+  .astuce {
+    background: #eef4ff; border-radius: 14px; padding: 16px 20px; margin-top: 20px;
+    font-size: 0.87rem; line-height: 1.55; border-left: 4px solid var(--bleu-clair); color: #1a3a5c;
+  }
+  .astuce strong { color: var(--bleu-clair); }
+
+  footer { text-align: center; margin-top: 36px; font-size: 0.78rem; color: #aaa; font-weight: 600; }
+  footer span { color: var(--orange); }
+
+  @media print {
+    body { background: white; }
+    header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .etape-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="emoji">🚌</span>
+  <h1>Générateur de courriers<br>Sorties Scolaires</h1>
+  <p>Mode d'emploi — École Cantarelle</p>
+</header>
+
+<div class="wrap">
+
+  <div class="intro">
+    Cet outil permet de créer en quelques clics des <strong>courriers pour les parents</strong> lors de sorties scolaires. Deux modes sont disponibles : <strong>sortie unique</strong> (une seule date) ou <strong>sortie récurrente</strong> (piscine, médiathèque…). Vous pouvez générer plusieurs courriers à la fois et imprimer le tout en <strong>orientation paysage</strong>, 2 sorties par page.
+  </div>
+
+  <!-- ÉTAPES COMMUNES -->
+  <h2 class="section">📋 Pour toutes les sorties</h2>
+  <div class="etapes">
+
+    <div class="etape">
+      <div class="etape-num">1</div>
+      <div class="etape-content">
+        <h3>Choisissez le type de sortie</h3>
+        <p>En haut de chaque fiche, sélectionnez :</p>
+        <p><span class="tag bleu">📅 Sortie unique</span> pour une sortie avec une seule date.</p>
+        <p><span class="tag vert">🔁 Sortie récurrente</span> pour plusieurs séances (ex. piscine tous les jeudis).</p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num">2</div>
+      <div class="etape-content">
+        <h3>Remplissez les informations</h3>
+        <p>Pour chaque sortie : <strong>école, classe, destination, objet</strong>. Le champ <em>Message complémentaire</em> est facultatif.</p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num">3</div>
+      <div class="etape-content">
+        <h3>Choisissez le signataire</h3>
+        <p>Sélectionnez dans le menu : <span class="tag">La directrice</span> <span class="tag">Le directeur</span> <span class="tag">L'enseignante</span> <span class="tag">L'enseignant</span></p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num">4</div>
+      <div class="etape-content">
+        <h3>Activez les options du coupon</h3>
+        <p>
+          <span class="tag orange">Accompagnateur</span> cases à cocher pour les parents volontaires<br>
+          <span class="tag orange">Pique-nique</span> ajoute une phrase d'info dans le courrier<br>
+          <span class="tag orange">Allergie</span> ligne à remplir dans le coupon<br>
+          <span class="tag orange">Urgence</span> numéro de téléphone à fournir le jour J
+        </p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num">5</div>
+      <div class="etape-content">
+        <h3>Ajoutez d'autres sorties si besoin</h3>
+        <p>Cliquez sur <strong>＋ Ajouter une sortie</strong>. Chaque fiche est rétractable (clic sur l'en-tête). Le bouton <strong>✕</strong> supprime une fiche.</p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num">6</div>
+      <div class="etape-content">
+        <h3>Générez et imprimez</h3>
+        <p>Cliquez sur <strong>📄 Générer le document</strong>, puis <strong>🖨️ Imprimer</strong>. L'impression se fait en <strong>paysage A4</strong>, 2 sorties côte à côte. Chaque sortie reste entière, sans coupure. Les parents rapportent <strong>la feuille entière</strong> signée.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODE RÉCURRENT -->
+  <h2 class="section">🔁 Mode sortie récurrente</h2>
+  <div class="etapes">
+
+    <div class="etape">
+      <div class="etape-num vert">1</div>
+      <div class="etape-content">
+        <h3>Ajoutez les dates des séances</h3>
+        <p>Cliquez sur <strong>＋ Ajouter une date</strong> pour chaque séance. Saisissez la date, l'heure de départ et l'heure de retour. Si toutes les séances ont les mêmes horaires, ils seront automatiquement mutualisés dans le courrier.</p>
+      </div>
+    </div>
+
+    <div class="etape">
+      <div class="etape-num vert">2</div>
+      <div class="etape-content">
+        <h3>Le coupon s'adapte automatiquement</h3>
+        <p>Si l'option <span class="tag orange">Accompagnateur</span> est activée, le coupon affiche <strong>une case à cocher par date</strong> — les parents cochent les séances où ils sont disponibles (plusieurs choix possibles).</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="encart" style="margin-top:14px">
+    <h3>💡 Bon à savoir</h3>
+    <div class="option-row">
+      <span class="option-icon">✏️</span>
+      <span>Vous pouvez modifier les informations et <strong>regénérer</strong> autant de fois que vous voulez avant d'imprimer.</span>
+    </div>
+    <div class="option-row">
+      <span class="option-icon">🚌</span>
+      <span>Chaque sortie peut avoir des <strong>options différentes</strong> et un signataire différent.</span>
+    </div>
+    <div class="option-row">
+      <span class="option-icon">📋</span>
+      <span>Le coupon contient toujours : <strong>nom, prénom, classe et nom du parent</strong>, plus les options activées.</span>
+    </div>
+  </div>
+
+  <div class="astuce">
+    <strong>Astuce :</strong> Si vous n'avez qu'une seule sortie, saisissez-la <strong>deux fois</strong> en cliquant sur <em>＋ Ajouter une sortie</em> et en remplissant les mêmes informations. Les deux courriers s'impriment côte à côte sur une seule feuille A4 — il suffira de la couper en deux pour distribuer un exemplaire à chaque élève.
+  </div>
+
+  <footer>
+    Outil créé pour l'<span>École Cantarelle</span> · Académie de Montpellier
+  </footer>
+
+</div>
+</body>
+</html>
