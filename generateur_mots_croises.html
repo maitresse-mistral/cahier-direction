@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de Mots Croisés</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sour+Gummy:wght@400;600;800&family=Nunito:wght@400;600;700&display=swap');
+:root {
+  --bleu: #1a4fa8; --bleu-c: #e8f0fb; --bleu-f: #1340a0;
+  --vert: #1a8a5a; --vert-c: #e6f6ee;
+  --orange: #c96a00; --orange-c: #fff4e0;
+  --rouge: #c0392b; --rouge-c: #fdecea;
+  --gris: #f4f6fa; --t1: #1a1f2e; --t2: #4a5568; --blanc: #fff;
+  --ombre: 0 4px 24px rgba(26,79,168,0.10); --r: 16px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Nunito',sans-serif; background:linear-gradient(135deg,#e8f0fb 0%,#f4f6fa 50%,#e6f6ee 100%); min-height:100vh; color:var(--t1); }
+.app { max-width:800px; margin:0 auto; padding:24px 16px 70px; }
+header { text-align:center; margin-bottom:26px; }
+header h1 { font-family:'Sour Gummy',cursive; font-size:2rem; font-weight:800; color:var(--bleu); }
+header p { color:var(--t2); font-size:0.92rem; margin-top:5px; }
+.card { background:var(--blanc); border-radius:var(--r); padding:20px 22px; margin-bottom:14px; box-shadow:var(--ombre); border:1.5px solid rgba(26,79,168,0.07); }
+.card h2 { font-family:'Sour Gummy',cursive; font-size:1.05rem; font-weight:700; color:var(--bleu); margin-bottom:13px; display:flex; align-items:center; gap:8px; }
+.badge { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; background:var(--bleu); color:#fff; border-radius:50%; font-size:0.78rem; font-weight:700; font-family:'Nunito',sans-serif; flex-shrink:0; }
+.row6 { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pick-btn { padding:9px 4px; border:2px solid #dde3f0; border-radius:10px; background:var(--gris); font-family:'Sour Gummy',cursive; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all .14s; color:var(--t2); text-align:center; }
+.pick-btn:hover { border-color:var(--bleu); color:var(--bleu); background:var(--bleu-c); }
+.pick-btn.active { border-color:var(--bleu); background:var(--bleu); color:#fff; }
+.format-btn { padding:13px 8px; border:2px solid #dde3f0; border-radius:12px; background:var(--gris); cursor:pointer; transition:all .14s; color:var(--t2); display:flex; flex-direction:column; align-items:center; gap:3px; }
+.format-icon { font-size:1.6rem; line-height:1; }
+.format-label { font-size:0.9rem; font-weight:700; }
+.format-sub { font-size:0.72rem; opacity:0.7; }
+.format-btn:hover { border-color:var(--bleu); color:var(--bleu); background:var(--bleu-c); }
+.format-btn.active { border-color:var(--bleu); background:var(--bleu); color:#fff; }
+.format-btn.active .format-sub { opacity:.88; }
+textarea { font-family:'Nunito',sans-serif; font-size:0.92rem; color:var(--t1); border:2px solid #dde3f0; border-radius:10px; padding:10px 13px; background:var(--gris); transition:border-color .16s, background .16s; width:100%; resize:vertical; line-height:1.6; }
+textarea:focus { outline:none; border-color:var(--bleu); background:#fff; }
+.hint { font-size:0.77rem; color:var(--t2); margin-top:5px; line-height:1.4; }
+.words-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; min-height:22px; }
+.tag { background:var(--bleu-c); color:var(--bleu); border-radius:20px; padding:2px 10px; font-size:0.78rem; font-weight:700; }
+.btn-gen { width:100%; padding:13px; background:linear-gradient(135deg,var(--bleu) 0%,#2563d4 100%); color:#fff; border:none; border-radius:13px; font-family:'Sour Gummy',cursive; font-size:1.1rem; font-weight:700; cursor:pointer; transition:all .2s; box-shadow:0 4px 14px rgba(26,79,168,.22); }
+.btn-gen:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 18px rgba(26,79,168,.32); }
+.btn-gen:disabled { opacity:.52; cursor:not-allowed; }
+.status { text-align:center; padding:14px; font-size:0.92rem; color:var(--t2); display:none; }
+.status.show { display:block; }
+.spinner { display:inline-block; width:18px; height:18px; border:3px solid var(--bleu-c); border-top-color:var(--bleu); border-radius:50%; animation:spin .7s linear infinite; margin-right:7px; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.defs-table { width:100%; border-collapse:collapse; font-size:0.87rem; margin-top:4px; }
+.defs-table th { background:var(--bleu-c); color:var(--bleu); font-weight:700; padding:7px 10px; text-align:left; font-size:0.76rem; text-transform:uppercase; letter-spacing:.04em; }
+.defs-table td { padding:6px 8px; border-bottom:1px solid #eef0f6; vertical-align:middle; }
+.defs-table tr:last-child td { border-bottom:none; }
+.defs-table tr:nth-child(even) td { background:#fafbff; }
+.mot-cell { font-weight:700; color:var(--bleu); white-space:nowrap; font-size:0.82rem; padding:6px 10px; }
+.def-edit { width:100%; border:1.5px solid #dde3f0; border-radius:7px; padding:5px 8px; font-family:'Nunito',sans-serif; font-size:0.85rem; background:#fff; color:var(--t1); transition:border-color .14s; }
+.def-edit:focus { outline:none; border-color:var(--bleu); }
+.btn-row { display:flex; gap:9px; margin-top:13px; flex-wrap:wrap; }
+.btn { flex:1; min-width:120px; padding:9px 13px; border:2px solid var(--bleu); border-radius:10px; background:#fff; color:var(--bleu); font-family:'Sour Gummy',cursive; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all .14s; text-align:center; }
+.btn:hover { background:var(--bleu-c); }
+.btn.primary { background:var(--bleu); color:#fff; }
+.btn.primary:hover { background:var(--bleu-f); }
+.alert { padding:9px 13px; border-radius:9px; font-size:0.85rem; margin-bottom:9px; display:none; line-height:1.45; }
+.alert.show { display:block; }
+.alert.warn { background:var(--orange-c); color:var(--orange); border:1px solid #f8c87a; }
+.alert.err  { background:var(--rouge-c);  color:var(--rouge);  border:1px solid #f5a9a0; }
+.alert.ok   { background:var(--vert-c);   color:var(--vert);   border:1px solid #7dd4b0; }
+#section-defs, #section-grille { display:none; }
+#section-defs.show, #section-grille.show { display:block; }
+.grid-scroll { overflow-x:auto; margin:10px 0 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>✏️ Générateur de Mots Croisés</h1>
+    <p>Saisis tes mots → définitions automatiques → grille imprimable</p>
+  </header>
+  <div class="card">
+    <h2><span class="badge">1</span> Niveau des élèves</h2>
+    <div class="row6">
+      <button class="pick-btn" data-v="CP"  onclick="pick(this,'niveau')">CP</button>
+      <button class="pick-btn" data-v="CE1" onclick="pick(this,'niveau')">CE1</button>
+      <button class="pick-btn" data-v="CE2" onclick="pick(this,'niveau')">CE2</button>
+      <button class="pick-btn" data-v="CM1" onclick="pick(this,'niveau')">CM1</button>
+      <button class="pick-btn active" data-v="CM2" onclick="pick(this,'niveau')">CM2</button>
+      <button class="pick-btn" data-v="6e"  onclick="pick(this,'niveau')">6e</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span class="badge">2</span> Format d'impression</h2>
+    <div class="row2">
+      <button class="format-btn active" data-v="demiA4" onclick="pick(this,'format')">
+        <span class="format-icon">📄</span>
+        <span class="format-label">Demi-A4</span>
+        <span class="format-sub">148 × 210 mm</span>
+      </button>
+      <button class="format-btn" data-v="A4" onclick="pick(this,'format')">
+        <span class="format-icon">📋</span>
+        <span class="format-label">A4 entier</span>
+        <span class="format-sub">210 × 297 mm</span>
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span class="badge">3</span> Tes mots</h2>
+    <textarea id="words-input" rows="5"
+      placeholder="Un mot par ligne ou séparés par des virgules :&#10;&#10;pouvoir&#10;village&#10;fenêtre&#10;confortable&#10;..."
+      oninput="updateTags()"></textarea>
+    <p class="hint">💡 Entre 5 et 18 mots. Les accents sont gérés automatiquement.</p>
+    <div class="words-tags" id="words-tags"></div>
+  </div>
+  <div style="margin-bottom:14px;">
+    <div class="alert" id="alert-main"></div>
+    <button class="btn-gen" id="btn-gen" onclick="genererDefinitions()">✨ Générer les définitions</button>
+  </div>
+  <div class="status" id="status">
+    <span class="spinner"></span>
+    <span id="status-text">Génération des définitions en cours…</span>
+  </div>
+  <div class="card" id="section-defs">
+    <h2><span class="badge">4</span> Vérifie les définitions</h2>
+    <p class="hint" style="margin-bottom:11px;">Clique sur une définition pour la modifier avant de construire la grille.</p>
+    <table class="defs-table">
+      <thead><tr><th>Mot</th><th>Définition</th></tr></thead>
+      <tbody id="defs-body"></tbody>
+    </table>
+    <div class="btn-row">
+      <button class="btn" onclick="genererDefinitions()">🔄 Regénérer</button>
+      <button class="btn primary" onclick="genererGrille()">📐 Construire la grille →</button>
+    </div>
+  </div>
+  <div class="card" id="section-grille">
+    <h2><span class="badge">5</span> Ta grille est prête !</h2>
+    <div class="alert ok show" id="grille-info"></div>
+    <div class="grid-scroll" id="grille-preview"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="genererGrille()">🔄 Recalculer</button>
+      <button class="btn primary" onclick="imprimer()">🖨️ Imprimer</button>
+    </div>
+  </div>
+</div><script>
+const _k = atob('Z3NrX2Y2eks0eHZZaVhrRWRsanN6QWZvV0dkeWIzRlk0R2RldURCS1BOb' +
+                'GxNT3didUM1R1hpcw==');
+
+let etat = { niveau:'CM2', format:'demiA4' };
+let definitions = {};
+let currentCW = null;
+
+function pick(btn, group) {
+  btn.parentElement.querySelectorAll('.pick-btn,.format-btn')
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  etat[group] = btn.dataset.v;
+}
+
+function getWords() {
+  return document.getElementById('words-input').value
+    .split(/[\n,;]+/).map(w => w.trim().toUpperCase()).filter(w => w.length >= 2);
+}
+
+function updateTags() {
+  document.getElementById('words-tags').innerHTML =
+    getWords().map(w => `<span class="tag">${w}</span>`).join('');
+}
+
+function normalize(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z]/g,'');
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('alert-main');
+  el.textContent = msg; el.className = `alert show ${type}`;
+}
+function hideAlert() { document.getElementById('alert-main').className = 'alert'; }
+
+function setBusy(busy, msg) {
+  document.getElementById('btn-gen').disabled = busy;
+  const s = document.getElementById('status');
+  if (busy) { document.getElementById('status-text').textContent = msg; s.classList.add('show'); }
+  else s.classList.remove('show');
+}
+
+function showSection(id) { document.getElementById(id).classList.add('show'); }
+
+const NIVEAUX = {
+  'CP' : 'élèves de CP (6-7 ans), phrases très simples de 4-5 mots',
+  'CE1': 'élèves de CE1 (7-8 ans), phrases simples de 5-7 mots',
+  'CE2': 'élèves de CE2 (8-9 ans), phrases de 6-8 mots',
+  'CM1': 'élèves de CM1 (9-10 ans), phrases courtes de 7-9 mots',
+  'CM2': 'élèves de CM2 (10-11 ans), phrases de 8-11 mots',
+  '6e' : 'élèves de 6e (11-12 ans), phrases précises de 8-13 mots',
+};
+
+async function genererDefinitions() {
+  const words = getWords();
+  if (words.length < 2)  { showAlert('⚠️ Entre au moins 2 mots.','warn'); return; }
+  if (words.length > 20) { showAlert('⚠️ Maximum 20 mots.','warn'); return; }
+  hideAlert();
+  setBusy(true, 'Génération des définitions en cours…');
+
+  const prompt =
+`Tu es enseignant(e) en école primaire française.
+Génère des définitions simples et courtes pour un jeu de mots croisés pour des ${NIVEAUX[etat.niveau]}.
+Règles : la définition ne contient PAS le mot lui-même. Elle est courte et claire. En français uniquement.
+Mots : ${words.join(', ')}
+Réponds UNIQUEMENT avec un JSON valide, sans markdown :
+{"MOT1":"définition 1","MOT2":"définition 2"}`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${_k}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        max_tokens: 1024,
+        temperature: 0.4,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `Erreur HTTP ${res.status}`);
+    }
+    const data   = await res.json();
+    const text   = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    definitions = {};
+    for (const w of words) {
+      definitions[w] = parsed[w] || parsed[normalize(w)] || '(à compléter)';
+    }
+    afficherDefinitions(words);
+    showSection('section-defs');
+    document.getElementById('section-defs').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(e) {
+    showAlert(`❌ Erreur : ${e.message}`, 'err');
+    console.error(e);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function afficherDefinitions(words) {
+  const tbody = document.getElementById('defs-body');
+  tbody.innerHTML = '';
+  for (const w of words) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="mot-cell">${w}</td>
+       <td><input class="def-edit" type="text"
+         value="${(definitions[w]||'').replace(/"/g,'&quot;')}"
+         data-mot="${w}"
+         onchange="definitions[this.dataset.mot]=this.value.trim()"></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function buildCrossword(wordList) {
+  const sorted = [...wordList].map(normalize).sort((a,b) => b.length - a.length);
+  const K = (r,c) => `${r},${c}`;
+  function getCells(r,c,dir,word) {
+    const out={};
+    for(let i=0;i<word.length;i++)
+      out[dir==='H'?K(r,c+i):K(r+i,c)]=word[i];
+    return out;
+  }
+  function canPlace(grid,r,c,dir,word) {
+    for(const[k,v] of Object.entries(getCells(r,c,dir,word)))
+      if(grid[k]&&grid[k]!==v) return false;
+    return true;
+  }
+  function countCross(grid,r,c,dir,word) {
+    let n=0;
+    for(const k of Object.keys(getCells(r,c,dir,word))) if(grid[k]) n++;
+    return n;
+  }
+  let grid={};
+  const placed=[];
+  Object.assign(grid, getCells(0,0,'H',sorted[0]));
+  placed.push([0,0,'H',sorted[0]]);
+  for(let wi=1;wi<sorted.length;wi++){
+    const word=sorted[wi];
+    let best=null, bestScore=0;
+    for(const dir of ['V','H']){
+      for(let r=-word.length;r<35;r++){
+        for(let c=-word.length;c<35;c++){
+          if(r<-8||c<-8) continue;
+          if(canPlace(grid,r,c,dir,word)){
+            const sc=countCross(grid,r,c,dir,word);
+            if(sc>bestScore){bestScore=sc; best=[r,c,dir,word];}
+          }
+        }
+      }
+    }
+    if(best&&bestScore>0){
+      Object.assign(grid, getCells(...best));
+      placed.push(best);
+    }
+  }
+  if(!Object.keys(grid).length) return null;
+  const ks=Object.keys(grid).map(k=>k.split(',').map(Number));
+  const minR=Math.min(...ks.map(([r])=>r));
+  const minC=Math.min(...ks.map(([,c])=>c));
+  const normGrid={};
+  for(const[k,v] of Object.entries(grid)){
+    const[r,c]=k.split(',').map(Number);
+    normGrid[K(r-minR,c-minC)]=v;
+  }
+  const normPlaced=placed.map(([r,c,d,w])=>[r-minR,c-minC,d,w]);
+  const maxR=Math.max(...Object.keys(normGrid).map(k=>+k.split(',')[0]));
+  const maxC=Math.max(...Object.keys(normGrid).map(k=>+k.split(',')[1]));
+  return{grid:normGrid, placed:normPlaced, rows:maxR+1, cols:maxC+1};
+}function getClueNums(placed){
+  const starts={};
+  for(const[r,c,d,w] of placed){
+    const k=`${r},${c}`;
+    if(!starts[k]) starts[k]={H:null,V:null};
+    starts[k][d]=w;
+  }
+  const sortedK=Object.keys(starts).sort((a,b)=>{
+    const[ar,ac]=a.split(',').map(Number);
+    const[br,bc]=b.split(',').map(Number);
+    return ar!==br?ar-br:ac-bc;
+  });
+  const nums={};
+  sortedK.forEach((k,i)=>{nums[k]=i+1;});
+  return{nums,starts,sortedK};
+}
+
+function buildTableHTML(cw,cellMM){
+  const{grid,placed,rows,cols}=cw;
+  const{nums}=getClueNums(placed);
+  let html='<table style="border-collapse:collapse;">';
+  for(let r=0;r<rows;r++){
+    html+='<tr>';
+    for(let c=0;c<cols;c++){
+      if(grid[`${r},${c}`]){
+        const n=nums[`${r},${c}`]||'';
+        const ns=n?`<span style="position:absolute;top:0.3mm;left:0.4mm;font-size:4.5pt;font-weight:bold;color:#111;line-height:1;">${n}</span>`:'';
+        html+=`<td style="width:${cellMM}mm;height:${cellMM}mm;border:1.2px solid #111;background:#fff;position:relative;padding:0;">${ns}</td>`;
+      } else {
+        html+=`<td style="width:${cellMM}mm;height:${cellMM}mm;border:none;background:#fff;padding:0;"></td>`;
+      }
+    }
+    html+='</tr>';
+  }
+  return html+'</table>';
+}
+
+function buildCluesHTML(cw,defs,fontPt){
+  const{placed}=cw;
+  const{nums,starts,sortedK}=getClueNums(placed);
+  const n2o={};
+  for(const w of Object.keys(defs)) n2o[normalize(w)]=w;
+  const across=[],down=[];
+  for(const k of sortedK){
+    const num=nums[k],e=starts[k];
+    if(e.H){
+      const def=defs[n2o[e.H]||e.H]||'…';
+      across.push(`<li style="margin-bottom:1mm;font-size:${fontPt}pt;line-height:1.55;"><b style="display:inline-block;min-width:5.5mm;">${num}.</b>${def}</li>`);
+    }
+    if(e.V){
+      const def=defs[n2o[e.V]||e.V]||'…';
+      down.push(`<li style="margin-bottom:1mm;font-size:${fontPt}pt;line-height:1.55;"><b style="display:inline-block;min-width:5.5mm;">${num}.</b>${def}</li>`);
+    }
+  }
+  return{across,down};
+}
+
+function genererGrille(){
+  document.querySelectorAll('.def-edit').forEach(el=>{
+    definitions[el.dataset.mot]=el.value.trim();
+  });
+  const words=getWords();
+  if(!words.length){ showAlert('⚠️ Entre d\'abord tes mots.','warn'); return; }
+  const missing=words.filter(w=>!definitions[w]);
+  if(missing.length){
+    showAlert(`⚠️ Définitions manquantes : ${missing.slice(0,5).join(', ')}. Génère-les d'abord.`,'warn');
+    return;
+  }
+  currentCW=buildCrossword(words);
+  if(!currentCW){ showAlert('❌ Impossible de construire une grille avec ces mots.','err'); return; }
+  hideAlert();
+  const{grid,placed,rows,cols}=currentCW;
+  const skipped=words.length-placed.length;
+  document.getElementById('grille-info').textContent=
+    `✅ Grille ${rows} × ${cols} — ${placed.length} mots placés`+
+    (skipped>0?` (${skipped} mot(s) sans croisement ignoré(s))`:'');
+  const px=20;
+  const{nums}=getClueNums(placed);
+  let prev='<table style="border-collapse:collapse;">';
+  for(let r=0;r<rows;r++){
+    prev+='<tr>';
+    for(let c=0;c<cols;c++){
+      if(grid[`${r},${c}`]){
+        const n=nums[`${r},${c}`]||'';
+        const ns=n?`<span style="position:absolute;top:1px;left:1px;font-size:7px;font-weight:bold;color:#333;">${n}</span>`:'';
+        prev+=`<td style="width:${px}px;height:${px}px;border:1.5px solid #1a4fa8;background:#fff;position:relative;padding:0;">${ns}</td>`;
+      } else {
+        prev+=`<td style="width:${px}px;height:${px}px;border:none;background:transparent;padding:0;"></td>`;
+      }
+    }
+    prev+='</tr>';
+  }
+  document.getElementById('grille-preview').innerHTML=prev+'</table>';
+  showSection('section-grille');
+  document.getElementById('section-grille').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function imprimer(){
+  if(!currentCW){ showAlert('⚠️ Génère d\'abord la grille.','warn'); return; }
+  document.querySelectorAll('.def-edit').forEach(el=>{
+    definitions[el.dataset.mot]=el.value.trim();
+  });
+  const isDemi=etat.format==='demiA4';
+  const pageW=isDemi?'148mm':'210mm';
+  const pageH=isDemi?'210mm':'297mm';
+  const pad=isDemi?'7mm 6mm':'12mm 14mm';
+  const cellMM=isDemi?6.2:8.5;
+  const fontPt=isDemi?7:9;
+  const tPt=isDemi?12:15;
+  const colGap=isDemi?'2mm 5mm':'3mm 8mm';
+  const h2pt=fontPt+1;
+  const tableHTML=buildTableHTML(currentCW,cellMM);
+  const{across,down}=buildCluesHTML(currentCW,definitions,fontPt);
+  const html=`<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><title>Mots croisés ${etat.niveau}</title>
+<style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;font-family:Arial,sans-serif;}@media print{body{margin:0;}}</style>
+</head><body>
+<div style="width:${pageW};min-height:${pageH};padding:${pad};background:#fff;">
+  <h1 style="font-size:${tPt}pt;font-weight:bold;text-align:center;margin-bottom:3mm;">MOTS CROISÉS — ${etat.niveau}</h1>
+  <div style="display:flex;justify-content:center;margin-bottom:4mm;">${tableHTML}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:${colGap};">
+    <div>
+      <h2 style="font-size:${h2pt}pt;font-weight:bold;border-bottom:0.5px solid #555;padding-bottom:0.5mm;margin-bottom:1.5mm;">&#8594; HORIZONTALEMENT</h2>
+      <ol style="list-style:none;padding:0;">${across.join('')}</ol>
+    </div>
+    <div>
+      <h2 style="font-size:${h2pt}pt;font-weight:bold;border-bottom:0.5px solid #555;padding-bottom:0.5mm;margin-bottom:1.5mm;">&#8595; VERTICALEMENT</h2>
+      <ol style="list-style:none;padding:0;">${down.join('')}</ol>
+    </div>
+  </div>
+</div>
+</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  w.onload=()=>w.print();
+}
+
+updateTags();
+</script>
+</body>
+</html>
